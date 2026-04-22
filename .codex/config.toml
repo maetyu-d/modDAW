@@ -1,0 +1,19 @@
+project_name = "modular-sc-daw"
+
+[workflow]
+mode = "milestone-driven"
+current_milestone = "M1"
+allow_jump_ahead = false
+prefer_explicit_code = true
+prefer_debuggable_paths = true
+
+[architecture]
+juce_is_shell_only = true
+sclang_is_timing_authority = true
+scsynth_is_audio_engine = true
+preserve_process_boundaries = true
+
+[guardrails]
+forbid_transport_in_juce = true
+forbid_unplanned_features = true
+forbid_persistence_before_milestone = true

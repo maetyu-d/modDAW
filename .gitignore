@@ -1,0 +1,22 @@
+# Build outputs
+build/
+cmake-build*/
+out/
+release/
+
+# JUCE generated files
+juce-host/.idea/
+juce-host/.vs/
+juce-host/*.jucer
+
+# Vendored / external source checkouts
+third_party/supercollider/
+
+# OS / editor
+.DS_Store
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
