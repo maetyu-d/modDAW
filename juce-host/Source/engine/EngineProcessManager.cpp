@@ -1,7 +1,6 @@
 #include "EngineProcessManager.h"
 #include "../util/Ids.h"
 #include "../util/TimeUtils.h"
-#include <iostream>
 
 namespace
 {
@@ -327,7 +326,6 @@ void EngineProcessManager::setConnectionState(ConnectionState newState)
 
 void EngineProcessManager::appendLog(const juce::String& line)
 {
-    std::cerr << line << std::endl;
     const juce::ScopedLock scopedLock(lock);
     pendingLogLines.add(line);
 }
