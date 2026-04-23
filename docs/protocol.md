@@ -1,6 +1,6 @@
 # Protocol
 
-Milestones 1 through 28 use a simple newline-delimited JSON envelope over a localhost UDP socket bridge between the JUCE host and `sclang`.
+Milestones 1 through 30 use a simple newline-delimited JSON envelope over a localhost UDP socket bridge between the JUCE host and `sclang`.
 
 - One JSON object per line
 - UTF-8 text
@@ -203,6 +203,16 @@ Milestone 28 adds:
 - `engine.recoveryState`
 - `engine.recovered`
 
+Milestone 29 adds:
+
+- `render.requestState`
+- `render.state`
+- `render.fullMix`
+- `render.stems`
+- `render.completed`
+
+Milestone 30 does not add new engine message types. It consolidates host workflow modes over existing engine-owned state.
+
 ## Milestone 1 Flow
 
 1. JUCE launches `sclang`
@@ -317,6 +327,37 @@ JUCE may request this state with `analysis.requestState` and display it in the t
 ```
 
 JUCE may request this state with `engine.recoveryRequestState`. `sclang` writes declarative recovery snapshots after accepted project mutations and may emit `engine.recovered` on startup if it rehydrates unsaved state from that recovery snapshot. Recovery snapshots intentionally persist project declarations rather than raw `scsynth` runtime.
+
+## Milestone 29 Render Payload
+
+`render.fullMix` and `render.stems` accept a render range:
+
+```json
+{
+  "startBeat": 0.0,
+  "lengthBeats": 16.0
+}
+```
+
+`render.state` and `render.completed` report generated artifacts:
+
+```json
+{
+  "status": "complete",
+  "lastRenderId": "render.1",
+  "outputDirectory": "/path/to/sc-engine/renders",
+  "artifacts": [
+    {
+      "stemId": "full-mix",
+      "path": "/path/to/render.1-full-mix.json",
+      "eventCount": 16,
+      "artifactKind": "deterministic-offline-render-package"
+    }
+  ]
+}
+```
+
+The first M29 artifact is a deterministic render package, not a waveform file. It is authored by `sclang` from canonical project timing and is intended as the debuggable stepping stone before waveform/NRT rendering.
 
 ## Milestone 5 Flow
 

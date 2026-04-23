@@ -118,3 +118,7 @@ Milestone 26 adds external/performance input through host keyboard mappings. JUC
 Milestone 27 adds analysis and feedback modules. `sclang` owns the analysis module lifecycle, feature extraction, derived control values, downstream module influence, and emitted `analysis.state`; JUCE displays the analysis route and latest values without becoming the source of truth for adaptive behaviour.
 
 Milestone 28 adds error containment and recovery. Code-surface failures stay attached to the affected module surface and preserve the previous working revision. `sclang` owns dirty-state tracking and declarative recovery autosaves; JUCE displays recovery status and may request recovery state, but it does not reconstruct musical state from host-owned data.
+
+Milestone 29 adds offline render and stem export requests. JUCE may ask for a full mix or stems, but `sclang` owns render range interpretation, event reconstruction, mixer/stem state, and artifact writing. The first export format is a deterministic render package rather than a waveform, so it remains debuggable while preserving engine timing authority.
+
+Milestone 30 adds workflow modes in JUCE for arrangement, mixer, graph, and code work. These modes only reorganize existing engine-owned views and shortcuts; they do not create a host-side project model or host-authored musical timing.

@@ -21,6 +21,8 @@ TransportPanelComponent::TransportPanelComponent()
     addAndMakeVisible(performanceAccentButton);
     addAndMakeVisible(performanceCueButton);
     addAndMakeVisible(performanceLiftButton);
+    addAndMakeVisible(renderMixButton);
+    addAndMakeVisible(renderStemsButton);
 
     playButton.addListener(this);
     stopButton.addListener(this);
@@ -35,6 +37,8 @@ TransportPanelComponent::TransportPanelComponent()
     performanceAccentButton.addListener(this);
     performanceCueButton.addListener(this);
     performanceLiftButton.addListener(this);
+    renderMixButton.addListener(this);
+    renderStemsButton.addListener(this);
 
     setTransportState(state);
 }
@@ -54,6 +58,8 @@ TransportPanelComponent::~TransportPanelComponent()
     performanceAccentButton.removeListener(this);
     performanceCueButton.removeListener(this);
     performanceLiftButton.removeListener(this);
+    renderMixButton.removeListener(this);
+    renderStemsButton.removeListener(this);
 }
 
 void TransportPanelComponent::setTransportState(const TransportState& newState)
@@ -66,6 +72,13 @@ void TransportPanelComponent::setTransportState(const TransportState& newState)
 void TransportPanelComponent::setRecoveryState(const RecoveryState& newState)
 {
     recoveryState = newState;
+    updateSummaryText();
+    repaint();
+}
+
+void TransportPanelComponent::setRenderState(const RenderState& newState)
+{
+    renderState = newState;
     updateSummaryText();
     repaint();
 }
@@ -113,6 +126,12 @@ void TransportPanelComponent::resized()
     performanceCueButton.setBounds(performanceRow.removeFromLeft(performanceButtonWidth));
     performanceRow.removeFromLeft(8);
     performanceLiftButton.setBounds(performanceRow);
+
+    area.removeFromTop(8);
+    auto renderRow = area.removeFromTop(28);
+    renderMixButton.setBounds(renderRow.removeFromLeft((renderRow.getWidth() - 8) / 2));
+    renderRow.removeFromLeft(8);
+    renderStemsButton.setBounds(renderRow);
 }
 
 void TransportPanelComponent::paint(juce::Graphics& g)
@@ -201,6 +220,18 @@ void TransportPanelComponent::buttonClicked(juce::Button* button)
     if (button == &performanceLiftButton)
     {
         if (onPerformanceLiftPressed) onPerformanceLiftPressed();
+        return;
+    }
+
+    if (button == &renderMixButton)
+    {
+        if (onRenderMixPressed) onRenderMixPressed();
+        return;
+    }
+
+    if (button == &renderStemsButton)
+    {
+        if (onRenderStemsPressed) onRenderStemsPressed();
     }
 }
 
@@ -215,6 +246,9 @@ void TransportPanelComponent::updateSummaryText()
         if (! recoveryState.moduleErrors.isEmpty())
             summary += " | " + juce::String(recoveryState.moduleErrors.size()) + " isolated error";
     }
+
+    if (renderState.status == "complete" && ! renderState.artifacts.isEmpty())
+        summary += " | render " + juce::String(renderState.artifacts.size()) + " files";
 
     summaryLabel.setText(summary, juce::dontSendNotification);
 }

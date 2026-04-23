@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "../engine/RecoveryState.h"
+#include "../engine/RenderState.h"
 #include "../engine/TransportState.h"
 
 class TransportPanelComponent final : public juce::Component,
@@ -15,6 +16,7 @@ public:
 
     void setTransportState(const TransportState& newState);
     void setRecoveryState(const RecoveryState& newState);
+    void setRenderState(const RenderState& newState);
     void resized() override;
     void paint(juce::Graphics& g) override;
 
@@ -31,6 +33,8 @@ public:
     SimpleCallback onPerformanceAccentPressed;
     SimpleCallback onPerformanceCuePressed;
     SimpleCallback onPerformanceLiftPressed;
+    SimpleCallback onRenderMixPressed;
+    SimpleCallback onRenderStemsPressed;
 
 private:
     void buttonClicked(juce::Button* button) override;
@@ -38,6 +42,7 @@ private:
 
     TransportState state;
     RecoveryState recoveryState;
+    RenderState renderState;
     juce::Label titleLabel;
     juce::Label summaryLabel;
     juce::TextButton playButton { "Play" };
@@ -53,6 +58,8 @@ private:
     juce::TextButton performanceAccentButton { "Accent [1]" };
     juce::TextButton performanceCueButton { "Cue [2]" };
     juce::TextButton performanceLiftButton { "Lift [3]" };
+    juce::TextButton renderMixButton { "Render Mix" };
+    juce::TextButton renderStemsButton { "Export Stems" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TransportPanelComponent)
 };

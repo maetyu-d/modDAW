@@ -30,6 +30,8 @@ public:
 private:
     void timerCallback() override;
     void ensureSelectedModule(const ModuleState& moduleState);
+    void setWorkflowMode(const juce::String& mode);
+    void updateWorkflowVisibility();
 
     StatusBarComponent statusBar;
     GlobalRulerComponent globalRuler;
@@ -46,6 +48,11 @@ private:
     LogPanelComponent logPanel;
     EngineProcessManager processManager;
     juce::String selectedModuleId;
+    juce::String workflowMode { "arrangement" };
+    juce::TextButton arrangementModeButton { "Arrangement" };
+    juce::TextButton mixerModeButton { "Mixer" };
+    juce::TextButton graphModeButton { "Graph" };
+    juce::TextButton codeModeButton { "Code" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

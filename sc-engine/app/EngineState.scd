@@ -13,6 +13,7 @@
     structural: [],
     performance: (),
     analysis: (),
-    recovery: ()
+    recovery: (),
+    render: ()
 );
 )

@@ -23,3 +23,4 @@ third_party/supercollider/
 
 # Runtime recovery snapshots
 sc-engine/projects/recovery-autosave.json
+sc-engine/renders/*.json

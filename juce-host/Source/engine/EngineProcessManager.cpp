@@ -114,6 +114,7 @@ void EngineProcessManager::stop()
         routeState = {};
         regionState = {};
         recoveryState = {};
+        renderState = {};
         automationState = {};
         analysisState = {};
         structuralState = {};
@@ -178,6 +179,12 @@ RecoveryState EngineProcessManager::getRecoveryState() const
 {
     const juce::ScopedLock scopedLock(lock);
     return recoveryState;
+}
+
+RenderState EngineProcessManager::getRenderState() const
+{
+    const juce::ScopedLock scopedLock(lock);
+    return renderState;
 }
 
 AutomationState EngineProcessManager::getAutomationState() const
@@ -275,6 +282,21 @@ void EngineProcessManager::requestValidationState()
 void EngineProcessManager::requestRecoveryState()
 {
     sendRecoveryRequestState();
+}
+
+void EngineProcessManager::requestRenderState()
+{
+    sendRenderRequestState();
+}
+
+void EngineProcessManager::requestRenderFullMix()
+{
+    sendRenderFullMix();
+}
+
+void EngineProcessManager::requestRenderStems()
+{
+    sendRenderStems();
 }
 
 void EngineProcessManager::requestModuleActivateNextBar(const juce::String& moduleId)
@@ -545,6 +567,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         sendPerformanceRequestState();
         sendValidationRequestState();
         sendRecoveryRequestState();
+        sendRenderRequestState();
         return;
     }
 
@@ -761,6 +784,32 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         }
 
         appendLog("RECOVERY " + newRecoveryState.toSummaryString());
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeRenderState)
+    {
+        auto newRenderState = RenderState::fromPayload(envelope.payload);
+
+        {
+            const juce::ScopedLock scopedLock(lock);
+            renderState = newRenderState;
+        }
+
+        appendLog("RENDER " + newRenderState.toSummaryString());
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeRenderCompleted)
+    {
+        auto newRenderState = RenderState::fromPayload(envelope.payload);
+
+        {
+            const juce::ScopedLock scopedLock(lock);
+            renderState = newRenderState;
+        }
+
+        appendLog("RENDER complete " + newRenderState.toSummaryString());
         return;
     }
 
@@ -1017,6 +1066,35 @@ void EngineProcessManager::sendRecoveryRequestState()
                                  moddaw::ids::typeRecoveryRequestState,
                                  makeObject({
                                      { "request", "recovery-state" }
+                                 })));
+}
+
+void EngineProcessManager::sendRenderRequestState()
+{
+    connection.send(makeEnvelope(MessageKind::query,
+                                 moddaw::ids::typeRenderRequestState,
+                                 makeObject({
+                                     { "request", "render-state" }
+                                 })));
+}
+
+void EngineProcessManager::sendRenderFullMix()
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRenderFullMix,
+                                 makeObject({
+                                     { "startBeat", 0.0 },
+                                     { "lengthBeats", 16.0 }
+                                 })));
+}
+
+void EngineProcessManager::sendRenderStems()
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRenderStems,
+                                 makeObject({
+                                     { "startBeat", 0.0 },
+                                     { "lengthBeats", 16.0 }
                                  })));
 }
 

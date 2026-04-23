@@ -173,6 +173,15 @@
     { type == "engine.recoveryRequestState" } {
         ~emitRecoveryState.value(messageId);
     }
+    { type == "render.requestState" } {
+        ~emitRenderState.value(messageId);
+    }
+    { type == "render.fullMix" } {
+        ~renderFullMix.value(payload, messageId);
+    }
+    { type == "render.stems" } {
+        ~renderStems.value(payload, messageId);
+    }
     { type == "transport.requestState" } {
         ~emitTransportState.value(messageId);
     }

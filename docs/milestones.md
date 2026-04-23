@@ -28,10 +28,12 @@
 - `M26` external control and performance input
 - `M27` analysis and feedback modules
 - `M28` robust error containment and recovery
+- `M29` offline render and stem export
+- `M30` UI consolidation and workflow pass
 
 ## Current Progress
 
-`M1` through `M28` are implemented in this repository scaffold.
+`M1` through `M30` are implemented in this repository scaffold.
 
 `M13` introduces an engine-owned route list with audio and control route families. JUCE displays routes and requests route creation/deletion, while `sclang` validates endpoints and remains the route authority.
 
@@ -64,3 +66,7 @@
 `M27` introduces a minimal analysis/feedback module. `sclang` owns a `Kick Listener` analysis module that derives envelope, onset, density, and brightness proxy data from kick trigger events, emits `analysis.state`, updates module runtime feedback, and exposes an inspectable control route to `Texture Drift`.
 
 `M28` introduces minimal recovery containment. Failed code-surface eval remains isolated to the surface, `sclang` tracks unsaved project state, writes a declarative recovery autosave after project mutations, can rehydrate from that autosave after interruption, and emits `engine.recoveryState` for JUCE to display.
+
+`M29` introduces engine-owned offline render packages. JUCE can request a full-mix render or per-module stem export, but `sclang` reconstructs the render range from canonical tempo, meter, regions, mixer state, and module state, then writes deterministic JSON render artifacts under `sc-engine/renders/`.
+
+`M30` introduces a small workflow consolidation pass. JUCE now has arrangement, mixer, graph, and code modes plus shortcuts for mode switching, render, performance input, and save; these modes reorganize existing engine-owned views without moving musical authority into the host.

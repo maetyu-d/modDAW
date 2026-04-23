@@ -18,6 +18,7 @@ root = PathName(thisProcess.nowExecutingPath).pathOnly;
 (root +/+ "Performance.scd").load;
 (root +/+ "Analysis.scd").load;
 (root +/+ "ProjectState.scd").load;
+(root +/+ "Render.scd").load;
 
 ~installStructuralModule.value;
 ~installAnalysisModule.value;
@@ -34,6 +35,7 @@ root = PathName(thisProcess.nowExecutingPath).pathOnly;
 ~engineState[\performance] = ~makePerformancePayload.value;
 ~engineState[\analysis] = ~makeAnalysisPayload.value;
 ~engineState[\recovery] = ~makeRecoveryPayload.value;
+~engineState[\render] = ~makeRenderPayload.value;
 ~recoverFromAutosaveIfAvailable.value;
 ~startSocketLoop.value;
 ~startModuleActionLoop.value;

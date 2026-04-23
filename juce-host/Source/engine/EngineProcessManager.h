@@ -9,6 +9,7 @@
 #include "ModuleState.h"
 #include "RegionState.h"
 #include "RecoveryState.h"
+#include "RenderState.h"
 #include "RouteState.h"
 #include "StructuralState.h"
 #include "SubprocessHandle.h"
@@ -42,6 +43,7 @@ public:
     RouteState getRouteState() const;
     RegionState getRegionState() const;
     RecoveryState getRecoveryState() const;
+    RenderState getRenderState() const;
     AutomationState getAutomationState() const;
     AnalysisState getAnalysisState() const;
     StructuralState getStructuralState() const;
@@ -63,6 +65,9 @@ public:
     void requestStructuralState();
     void requestValidationState();
     void requestRecoveryState();
+    void requestRenderState();
+    void requestRenderFullMix();
+    void requestRenderStems();
     void requestModuleActivateNextBar(const juce::String& moduleId);
     void requestModuleCodeSurfaceUpdateNextBar(const juce::String& moduleId,
                                                const juce::String& surfaceId,
@@ -121,6 +126,9 @@ private:
     void sendStructuralRequestState();
     void sendValidationRequestState();
     void sendRecoveryRequestState();
+    void sendRenderRequestState();
+    void sendRenderFullMix();
+    void sendRenderStems();
     void sendModulesActivateNextBar(const juce::String& moduleId);
     void sendModulesUpdateCodeSurfaceNextBar(const juce::String& moduleId,
                                              const juce::String& surfaceId,
@@ -166,6 +174,7 @@ private:
     RouteState routeState;
     RegionState regionState;
     RecoveryState recoveryState;
+    RenderState renderState;
     AutomationState automationState;
     AnalysisState analysisState;
     StructuralState structuralState;

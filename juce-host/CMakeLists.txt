@@ -71,6 +71,8 @@ target_sources(modular_sc_daw PRIVATE
     Source/engine/RegionState.cpp
     Source/engine/RecoveryState.h
     Source/engine/RecoveryState.cpp
+    Source/engine/RenderState.h
+    Source/engine/RenderState.cpp
     Source/engine/ModuleState.h
     Source/engine/ModuleState.cpp
     Source/engine/SubprocessHandle.h
