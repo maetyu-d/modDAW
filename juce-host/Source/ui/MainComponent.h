@@ -9,6 +9,7 @@
 #include "LogPanelComponent.h"
 #include "MixerPanelComponent.h"
 #include "ModuleLanesComponent.h"
+#include "RouteGraphPanelComponent.h"
 #include "RouteListPanelComponent.h"
 #include "TimingInspectorComponent.h"
 #include "TransportPanelComponent.h"
@@ -24,6 +25,7 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
 private:
     void timerCallback() override;
@@ -35,6 +37,7 @@ private:
     CodeSurfaceComponent codeSurface;
     MixerPanelComponent mixerPanel;
     AutomationPanelComponent automationPanel;
+    RouteGraphPanelComponent routeGraphPanel;
     RouteListPanelComponent routeListPanel;
     TransportPanelComponent transportPanel;
     TimingInspectorComponent timingInspector;

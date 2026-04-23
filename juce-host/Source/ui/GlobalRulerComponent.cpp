@@ -17,6 +17,12 @@ void GlobalRulerComponent::setTransportState(const TransportState& newState)
     repaint();
 }
 
+void GlobalRulerComponent::setStructuralState(const StructuralState& newState)
+{
+    structuralState = newState;
+    repaint();
+}
+
 void GlobalRulerComponent::setSelectedLaneOverlay(const ModuleEntry* selectedModule, const ClockDomainEntry* selectedClockDomain)
 {
     hasSelectedOverlay = (selectedModule != nullptr && selectedClockDomain != nullptr);
@@ -144,6 +150,33 @@ void GlobalRulerComponent::paint(juce::Graphics& g)
             const float beatX = beatToX(beatStart - startBeat, rulerArea, visibleBeats);
             g.setColour(juce::Colour(0xff2b333d));
             g.drawVerticalLine(static_cast<int>(beatX), rulerArea.getY() + 22.0f, rulerArea.getBottom());
+        }
+    }
+
+    for (const auto& transition : structuralState.pendingTransitions)
+    {
+        if (transition.targetBeat < startBeat || transition.targetBeat > endBeat)
+            continue;
+
+        const float boundaryX = beatToX(transition.targetBeat - startBeat, rulerArea, visibleBeats);
+        g.setColour(juce::Colour(0xffffd166));
+        g.drawVerticalLine(static_cast<int>(boundaryX), rulerArea.getY(), rulerArea.getBottom());
+        g.fillRoundedRectangle({ boundaryX - 4.0f, rulerArea.getY() + 24.0f, 8.0f, rulerArea.getHeight() - 30.0f }, 3.0f);
+        g.setFont(juce::FontOptions(11.0f, juce::Font::bold));
+        g.drawText("pending " + transition.quantizationTarget,
+                   juce::Rectangle<float>(boundaryX + 6.0f, rulerArea.getY() + 24.0f, 140.0f, 16.0f).toNearestInt(),
+                   juce::Justification::centredLeft);
+    }
+
+    if (const auto* pending = structuralState.nextPendingTransition())
+    {
+        if (pending->targetBeat < 0.0)
+        {
+            g.setColour(juce::Colour(0xffffd166));
+            g.setFont(juce::FontOptions(11.5f, juce::Font::bold));
+            g.drawText("Pending scene waits for external cue",
+                       juce::Rectangle<float>(rulerArea.getX() + 8.0f, rulerArea.getY() + 42.0f, 260.0f, 18.0f).toNearestInt(),
+                       juce::Justification::centredLeft);
         }
     }
 

@@ -9,6 +9,10 @@
     mixer: (),
     routes: [],
     regions: [],
-    automation: []
+    automation: [],
+    structural: [],
+    performance: (),
+    analysis: (),
+    recovery: ()
 );
 )

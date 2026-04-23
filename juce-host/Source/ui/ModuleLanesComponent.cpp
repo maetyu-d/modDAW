@@ -1,5 +1,7 @@
 #include "ModuleLanesComponent.h"
 
+#include <cmath>
+
 ModuleLanesComponent::ModuleLanesComponent()
 {
 }
@@ -13,6 +15,12 @@ void ModuleLanesComponent::setModuleState(const ModuleState& newState)
 void ModuleLanesComponent::setRegionState(const RegionState& newState)
 {
     regionState = newState;
+    repaint();
+}
+
+void ModuleLanesComponent::setStructuralState(const StructuralState& newState)
+{
+    structuralState = newState;
     repaint();
 }
 
@@ -45,24 +53,26 @@ void ModuleLanesComponent::paint(juce::Graphics& g)
     if (state.modules.isEmpty())
         return;
 
-    const int laneCount = juce::jmin(3, state.modules.size());
+    const int laneCount = juce::jmin(4, state.modules.size());
     const float laneGap = 8.0f;
     const float laneHeight = (inner.getHeight() - (laneGap * static_cast<float>(laneCount - 1))) / static_cast<float>(juce::jmax(1, laneCount));
 
     for (int i = 0; i < laneCount; ++i)
     {
         const auto& module = state.modules.getReference(i);
+        const bool isStructural = module.laneType == "structural" || module.behaviourType.contains("structural");
         auto lane = juce::Rectangle<float>(inner.getX(),
                                            inner.getY() + ((laneHeight + laneGap) * static_cast<float>(i)),
                                            inner.getWidth(),
                                            laneHeight);
         const bool isSelected = (module.id == selectedModuleId);
         auto freezeButton = freezeButtonBoundsForLane(lane);
+        auto liveLinkButton = liveLinkButtonBoundsForLane(lane);
 
-        g.setColour(isSelected ? juce::Colour(0xff243443) : juce::Colour(0xff101419));
+        g.setColour(isSelected ? juce::Colour(0xff243443) : (isStructural ? juce::Colour(0xff181d17) : juce::Colour(0xff101419)));
         g.fillRoundedRectangle(lane, 6.0f);
 
-        g.setColour(isSelected ? juce::Colour(0xff7dd3fc) : juce::Colour(0xff2b333d));
+        g.setColour(isSelected ? juce::Colour(0xff7dd3fc) : (isStructural ? juce::Colour(0xff6f8a46) : juce::Colour(0xff2b333d)));
         g.drawRoundedRectangle(lane.reduced(0.5f), 6.0f, 1.0f);
 
         g.setColour(juce::Colour(0xfff3f5f7));
@@ -77,13 +87,23 @@ void ModuleLanesComponent::paint(juce::Graphics& g)
                    juce::Rectangle<float>(lane.getX() + 12.0f, lane.getY() + 28.0f, lane.getWidth() - freezeButton.getWidth() - 34.0f, 16.0f).toNearestInt(),
                    juce::Justification::centredLeft);
 
-        g.setColour(juce::Colour(0xff22313a));
-        g.fillRoundedRectangle(freezeButton, 5.0f);
-        g.setColour(juce::Colour(0xff7dd3fc));
-        g.drawRoundedRectangle(freezeButton.reduced(0.5f), 5.0f, 1.0f);
-        g.setColour(juce::Colour(0xfff3f5f7));
-        g.setFont(juce::FontOptions(12.0f, juce::Font::bold));
-        g.drawText("Freeze", freezeButton.toNearestInt(), juce::Justification::centred);
+        if (! isStructural)
+        {
+            g.setColour(juce::Colour(0xff22313a));
+            g.fillRoundedRectangle(freezeButton, 5.0f);
+            g.setColour(juce::Colour(0xff7dd3fc));
+            g.drawRoundedRectangle(freezeButton.reduced(0.5f), 5.0f, 1.0f);
+            g.setColour(juce::Colour(0xfff3f5f7));
+            g.setFont(juce::FontOptions(12.0f, juce::Font::bold));
+            g.drawText("Freeze", freezeButton.toNearestInt(), juce::Justification::centred);
+
+            g.setColour(juce::Colour(0xff17322e));
+            g.fillRoundedRectangle(liveLinkButton, 5.0f);
+            g.setColour(juce::Colour(0xff6ee7b7));
+            g.drawRoundedRectangle(liveLinkButton.reduced(0.5f), 5.0f, 1.0f);
+            g.setColour(juce::Colour(0xfff3f5f7));
+            g.drawText("Live Link", liveLinkButton.toNearestInt(), juce::Justification::centred);
+        }
 
         auto regions = regionState.regionsForModule(module.id);
         if (! regions.isEmpty())
@@ -100,10 +120,26 @@ void ModuleLanesComponent::paint(juce::Graphics& g)
                 if (! block.isEmpty())
                 {
                     const bool isRegionSelected = region.regionId == selectedRegionId;
-                    g.setColour(isRegionSelected ? juce::Colour(0xfff1b852) : juce::Colour(0xffd59f42));
+                    const bool isLiveLinked = region.regionIdentity == "live-linked" || region.source == "live-link";
+                    g.setColour(isRegionSelected
+                                    ? (isLiveLinked ? juce::Colour(0xff6ee7b7) : juce::Colour(0xfff1b852))
+                                    : (isLiveLinked ? juce::Colour(0xff2dd4bf) : juce::Colour(0xffd59f42)));
                     g.fillRoundedRectangle(block, 4.0f);
-                    g.setColour(isRegionSelected ? juce::Colour(0xfffff0b8) : juce::Colour(0xffffdf8a));
+                    if (isLiveLinked)
+                    {
+                        g.setColour(juce::Colour(0x660b0d10));
+                        for (float stripeX = block.getX(); stripeX < block.getRight(); stripeX += 8.0f)
+                            g.drawLine(stripeX, block.getBottom(), stripeX + 8.0f, block.getY(), 1.0f);
+                    }
+                    g.setColour(isRegionSelected
+                                    ? (isLiveLinked ? juce::Colour(0xffd1fae5) : juce::Colour(0xfffff0b8))
+                                    : (isLiveLinked ? juce::Colour(0xff99f6e4) : juce::Colour(0xffffdf8a)));
                     g.drawRoundedRectangle(block.reduced(0.5f), 4.0f, isRegionSelected ? 2.0f : 1.0f);
+
+                    g.setFont(juce::FontOptions(9.5f, juce::Font::bold));
+                    g.drawText(isLiveLinked ? "LIVE" : "FROZEN",
+                               block.reduced(4.0f, 0.0f).toNearestInt(),
+                               juce::Justification::centredLeft);
                 }
             }
         }
@@ -124,9 +160,42 @@ void ModuleLanesComponent::paint(juce::Graphics& g)
             }
         }
 
+        if (isStructural)
+        {
+            auto rail = regionRailBoundsForLane(lane);
+            g.setColour(juce::Colour(0xff0e130d));
+            g.fillRoundedRectangle(rail, 4.0f);
+
+            for (const auto& directive : structuralState.directives)
+            {
+                auto markerPhase = std::fmod(juce::jmax(0.0, directive.beat), 16.0) / 16.0;
+                auto x = rail.getX() + static_cast<float>(markerPhase * rail.getWidth());
+                auto marker = juce::Rectangle<float>(x - 3.0f, rail.getY() - 2.0f, 6.0f, rail.getHeight() + 4.0f);
+                g.setColour(directive.densityTarget > 0.5 ? juce::Colour(0xffd8ff8a) : juce::Colour(0xff8fb36b));
+                g.fillRoundedRectangle(marker, 3.0f);
+            }
+
+            if (const auto* latest = structuralState.latestDirective())
+            {
+                g.setColour(juce::Colour(0xffc5d99a));
+                g.setFont(juce::FontOptions(11.5f));
+                g.drawText("latest: " + latest->toSummaryString(),
+                           juce::Rectangle<float>(lane.getX() + 12.0f, lane.getBottom() - 20.0f, lane.getWidth() - 24.0f, 14.0f).toNearestInt(),
+                           juce::Justification::centredLeft);
+                continue;
+            }
+        }
+
         g.setColour(isSelected ? juce::Colour(0xff7dd3fc) : juce::Colour(0xff8f99a5));
         g.setFont(juce::FontOptions(11.5f));
-        g.drawText(isSelected ? "selected lane overlay active | frozen regions are engine-owned" : "click to select lane",
+        auto footer = juce::String(isSelected ? "selected lane overlay active | frozen/live-linked regions are engine-owned" : "click to select lane");
+        if (const auto* selectedRegion = findSelectedRegion())
+            if (selectedRegion->moduleId == module.id)
+                footer += " | " + (selectedRegion->regionIdentity.isNotEmpty() ? selectedRegion->regionIdentity : selectedRegion->source)
+                       + " | " + selectedRegion->editPolicy;
+        if (module.lastStructuralDirective.isNotEmpty())
+            footer += juce::String(" | influenced by ") + module.lastStructuralDirective;
+        g.drawText(footer,
                    juce::Rectangle<float>(lane.getX() + 12.0f, lane.getBottom() - 20.0f, lane.getWidth() - 24.0f, 14.0f).toNearestInt(),
                    juce::Justification::centredLeft);
     }
@@ -136,16 +205,24 @@ void ModuleLanesComponent::mouseUp(const juce::MouseEvent& event)
 {
     const auto laneIndex = laneIndexAtPosition(event.position);
 
-    if (laneIndex < 0 || laneIndex >= juce::jmin(3, state.modules.size()))
+    if (laneIndex < 0 || laneIndex >= juce::jmin(4, state.modules.size()))
         return;
 
     const auto& module = state.modules.getReference(laneIndex);
     auto lane = laneBoundsForIndex(laneIndex);
+    const bool isStructural = module.laneType == "structural" || module.behaviourType.contains("structural");
 
-    if (freezeButtonBoundsForLane(lane).contains(event.position))
+    if (! isStructural && freezeButtonBoundsForLane(lane).contains(event.position))
     {
         if (onFreezeModule)
             onFreezeModule(module.id);
+        return;
+    }
+
+    if (! isStructural && liveLinkButtonBoundsForLane(lane).contains(event.position))
+    {
+        if (onLiveLinkModule)
+            onLiveLinkModule(module.id);
         return;
     }
 
@@ -187,7 +264,7 @@ void ModuleLanesComponent::mouseUp(const juce::MouseEvent& event)
 
 int ModuleLanesComponent::laneIndexAtPosition(juce::Point<float> position) const
 {
-    const int laneCount = juce::jmin(3, state.modules.size());
+    const int laneCount = juce::jmin(4, state.modules.size());
     if (laneCount <= 0)
         return -1;
 
@@ -205,7 +282,7 @@ juce::Rectangle<float> ModuleLanesComponent::laneBoundsForIndex(int index) const
     auto inner = getLocalBounds().toFloat().reduced(12.0f);
     inner.removeFromTop(28.0f);
 
-    const int laneCount = juce::jmin(3, state.modules.size());
+    const int laneCount = juce::jmin(4, state.modules.size());
     if (laneCount <= 0)
         return {};
 
@@ -216,6 +293,11 @@ juce::Rectangle<float> ModuleLanesComponent::laneBoundsForIndex(int index) const
 }
 
 juce::Rectangle<float> ModuleLanesComponent::freezeButtonBoundsForLane(juce::Rectangle<float> lane) const
+{
+    return { lane.getRight() - 168.0f, lane.getY() + 8.0f, 72.0f, 24.0f };
+}
+
+juce::Rectangle<float> ModuleLanesComponent::liveLinkButtonBoundsForLane(juce::Rectangle<float> lane) const
 {
     return { lane.getRight() - 88.0f, lane.getY() + 8.0f, 72.0f, 24.0f };
 }

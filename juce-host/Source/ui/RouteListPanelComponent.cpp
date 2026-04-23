@@ -23,6 +23,9 @@ RouteListPanelComponent::RouteListPanelComponent()
 
     familySelector.addItem("audio", 1);
     familySelector.addItem("control", 2);
+    familySelector.addItem("event", 3);
+    familySelector.addItem("structural", 4);
+    familySelector.addItem("sync", 5);
     familySelector.setSelectedId(1, juce::dontSendNotification);
     familySelector.addListener(this);
 

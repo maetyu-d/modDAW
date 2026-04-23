@@ -8,6 +8,7 @@ MainComponent::MainComponent()
     addAndMakeVisible(codeSurface);
     addAndMakeVisible(mixerPanel);
     addAndMakeVisible(automationPanel);
+    addAndMakeVisible(routeGraphPanel);
     addAndMakeVisible(routeListPanel);
     addAndMakeVisible(transportPanel);
     addAndMakeVisible(timingInspector);
@@ -45,6 +46,41 @@ MainComponent::MainComponent()
         processManager.requestProjectLoad();
     };
 
+    transportPanel.onSceneNextPhrasePressed = [this]
+    {
+        processManager.requestSceneTransition("nextPhrase", 0, "global.main", "Next Phrase Scene");
+    };
+
+    transportPanel.onSceneAfterTwoCyclesPressed = [this]
+    {
+        processManager.requestSceneTransition("afterNCycles", 2, "global.main", "After Two Cycles Scene");
+    };
+
+    transportPanel.onSceneExternalCuePressed = [this]
+    {
+        processManager.requestSceneTransition("externalCue", 0, "global.main", "External Cue Scene");
+    };
+
+    transportPanel.onExternalCuePressed = [this]
+    {
+        processManager.requestExternalCue("manual");
+    };
+
+    transportPanel.onPerformanceAccentPressed = [this]
+    {
+        processManager.requestPerformanceMacro("kick.accent", 1.0);
+    };
+
+    transportPanel.onPerformanceCuePressed = [this]
+    {
+        processManager.requestPerformanceMacro("scene.cue", 1.0);
+    };
+
+    transportPanel.onPerformanceLiftPressed = [this]
+    {
+        processManager.requestPerformanceMacro("density.lift", 1.0);
+    };
+
     moduleLanes.onModuleSelected = [this](const juce::String& moduleId)
     {
         selectedModuleId = moduleId;
@@ -53,6 +89,11 @@ MainComponent::MainComponent()
     moduleLanes.onFreezeModule = [this](const juce::String& moduleId)
     {
         processManager.requestModuleFreezeToRegion(moduleId);
+    };
+
+    moduleLanes.onLiveLinkModule = [this](const juce::String& moduleId)
+    {
+        processManager.requestModuleLiveLinkedRegion(moduleId);
     };
 
     moduleLanes.onRegionEdit = [this](const juce::String& regionId, const juce::String& action)
@@ -71,9 +112,9 @@ MainComponent::MainComponent()
             processManager.requestRegionDelete(regionId);
     };
 
-    codeSurface.onSubmitPressed = [this](const juce::String& moduleId, const juce::String& codeText)
+    codeSurface.onSubmitPressed = [this](const juce::String& moduleId, const juce::String& surfaceId, const juce::String& codeText)
     {
-        processManager.requestModuleCodeSurfaceUpdateNextBar(moduleId, codeText);
+        processManager.requestModuleCodeSurfaceUpdateNextBar(moduleId, surfaceId, codeText);
     };
 
     mixerPanel.onStripLevelChanged = [this](const juce::String& stripId, double level)
@@ -84,6 +125,21 @@ MainComponent::MainComponent()
     mixerPanel.onStripMuteChanged = [this](const juce::String& stripId, bool muted)
     {
         processManager.requestMixerStripMuted(stripId, muted);
+    };
+
+    mixerPanel.onStripGroupChanged = [this](const juce::String& stripId, const juce::String& groupId)
+    {
+        processManager.requestMixerStripGroup(stripId, groupId);
+    };
+
+    mixerPanel.onSendLevelChanged = [this](const juce::String& sendId, double level)
+    {
+        processManager.requestMixerSendLevel(sendId, level);
+    };
+
+    mixerPanel.onSendModeChanged = [this](const juce::String& sendId, const juce::String& mode)
+    {
+        processManager.requestMixerSendMode(sendId, mode);
     };
 
     automationPanel.onAddPoint = [this](const juce::String& laneId, double value)
@@ -109,8 +165,30 @@ MainComponent::MainComponent()
         processManager.requestRouteDelete(routeId);
     };
 
+    routeGraphPanel.onCreateRoute = [this](const juce::String& family,
+                                           const juce::String& source,
+                                           const juce::String& destination,
+                                           bool enabled)
+    {
+        processManager.requestRouteCreate(family, source, destination, enabled);
+    };
+
+    routeGraphPanel.onDeleteRoute = [this](const juce::String& routeId)
+    {
+        processManager.requestRouteDelete(routeId);
+    };
+
+    timingInspector.onRelationChangeRequested = [this](const juce::String& domainId,
+                                                       const juce::String& relationType,
+                                                       double phaseOffsetBeats)
+    {
+        processManager.requestClockDomainRelation(domainId, relationType, phaseOffsetBeats);
+    };
+
     processManager.start();
     startTimerHz(10);
+    setWantsKeyboardFocus(true);
+    grabKeyboardFocus();
     setSize(1480, 1120);
 }
 
@@ -130,7 +208,7 @@ void MainComponent::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff8d97a6));
     g.setFont(juce::FontOptions(12.5f));
-    g.drawText("M17 automation lanes", 236, 13, 220, 22, juce::Justification::centredLeft);
+    g.drawText("M28 recovery containment", 236, 13, 260, 22, juce::Justification::centredLeft);
 }
 
 void MainComponent::resized()
@@ -154,11 +232,13 @@ void MainComponent::resized()
     dashboardLeft.removeFromTop(10);
     mixerPanel.setBounds(dashboardLeft);
 
-    transportPanel.setBounds(sideColumn.removeFromTop(120));
+    transportPanel.setBounds(sideColumn.removeFromTop(190));
     sideColumn.removeFromTop(10);
-    automationPanel.setBounds(sideColumn.removeFromTop(150));
+    routeGraphPanel.setBounds(sideColumn.removeFromTop(230));
     sideColumn.removeFromTop(10);
-    routeListPanel.setBounds(sideColumn.removeFromTop(170));
+    routeListPanel.setBounds(sideColumn.removeFromTop(150));
+    sideColumn.removeFromTop(10);
+    automationPanel.setBounds(sideColumn.removeFromTop(130));
     sideColumn.removeFromTop(10);
     timingInspector.setBounds(sideColumn.removeFromTop(120));
     sideColumn.removeFromTop(10);
@@ -170,6 +250,29 @@ void MainComponent::resized()
     logPanel.setBounds(diagnosticsRow);
 }
 
+bool MainComponent::keyPressed(const juce::KeyPress& key)
+{
+    if (key.getTextCharacter() == '1')
+    {
+        processManager.requestPerformanceMacro("kick.accent", 1.0);
+        return true;
+    }
+
+    if (key.getTextCharacter() == '2')
+    {
+        processManager.requestPerformanceMacro("scene.cue", 1.0);
+        return true;
+    }
+
+    if (key.getTextCharacter() == '3')
+    {
+        processManager.requestPerformanceMacro("density.lift", 1.0);
+        return true;
+    }
+
+    return false;
+}
+
 void MainComponent::timerCallback()
 {
     const auto connectionState = processManager.getConnectionState();
@@ -179,7 +282,10 @@ void MainComponent::timerCallback()
     const auto mixerState = processManager.getMixerState();
     const auto routeState = processManager.getRouteState();
     const auto regionState = processManager.getRegionState();
+    const auto recoveryState = processManager.getRecoveryState();
     const auto automationState = processManager.getAutomationState();
+    const auto analysisState = processManager.getAnalysisState();
+    const auto structuralState = processManager.getStructuralState();
     const auto validationState = processManager.getValidationState();
 
     ensureSelectedModule(moduleState);
@@ -191,16 +297,20 @@ void MainComponent::timerCallback()
 
     statusBar.setConnectionState(connectionState);
     globalRuler.setTransportState(transportState);
+    globalRuler.setStructuralState(structuralState);
     globalRuler.setSelectedLaneOverlay(selectedModule, selectedClockDomain);
     moduleLanes.setModuleState(moduleState);
     moduleLanes.setRegionState(regionState);
+    moduleLanes.setStructuralState(structuralState);
     moduleLanes.setSelectedModuleId(selectedModuleId);
     codeSurface.setSelectedModule(selectedModule);
     mixerPanel.setMixerState(mixerState);
     automationPanel.setAutomationState(automationState);
+    routeGraphPanel.setRouteState(routeState);
     routeListPanel.setRouteState(routeState);
     transportPanel.setTransportState(transportState);
-    timingInspector.setInspectorState(transportState, selectedModule, selectedClockDomain);
+    transportPanel.setRecoveryState(recoveryState);
+    timingInspector.setInspectorState(transportState, selectedModule, selectedClockDomain, structuralState, analysisState);
     validationPanel.setValidationState(validationState);
 
     for (const auto& line : processManager.takePendingLogLines())

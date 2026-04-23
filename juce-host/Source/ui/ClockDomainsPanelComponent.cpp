@@ -56,11 +56,18 @@ void ClockDomainsPanelComponent::refreshText()
         lines.add(domain.displayName + " [" + domain.id + "]");
         lines.add("  kind=" + domain.kind
                   + " parent=" + (domain.parentId.isNotEmpty() ? domain.parentId : "none")
+                  + " relation=" + (domain.relationType.isNotEmpty() ? domain.relationType : "tempoShared")
                   + " ratio=" + juce::String(domain.ratioToParent, 3)
                   + " phaseOffset=" + juce::String(domain.phaseOffsetBeats, 3));
+        if (domain.relationDescription.isNotEmpty())
+            lines.add("  " + domain.relationDescription);
         lines.add("  localBar=" + juce::String(domain.localBarIndex)
                   + " localBeat=" + juce::String(domain.localBeatInBar, 2)
                   + " absoluteBeat=" + juce::String(domain.localBeatPosition, 2));
+        lines.add("  phraseBars=" + juce::String(domain.phraseLengthBars)
+                  + " phraseIndex=" + juce::String(domain.phraseIndex)
+                  + " phrasePhase=" + juce::String(domain.phrasePhase, 3)
+                  + " nextPhraseBeat=" + juce::String(domain.nextPhraseBeat, 2));
         lines.add({});
     }
 

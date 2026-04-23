@@ -7,6 +7,12 @@
         lifecycleState: "idle",
         behaviourType: "demo-sound",
         codeSurface: "(\namp: 0.5,\nbaseFreq: 74,\ndropFreq: 32,\nnoiseMix: 0.05,\ndecay: 0.22\n)",
+        codeSurfaces: [
+            (surfaceId: "pattern", displayName: "Pattern", role: "pattern", code: "(\namp: 0.5,\nbaseFreq: 74,\ndropFreq: 32,\nnoiseMix: 0.05,\ndecay: 0.22\n)"),
+            (surfaceId: "synthDef", displayName: "SynthDef", role: "synthDef", code: "(\nname: 'modDawKickPulse',\nengineOwned: true\n)"),
+            (surfaceId: "routine", displayName: "Routine", role: "routine", code: "(\nstepsPerBar: 4,\naccentEvery: 4\n)"),
+            (surfaceId: "init", displayName: "Init", role: "init", code: "(\nready: true\n)")
+        ],
         initialSoundSpec: (
             amp: 0.5,
             baseFreq: 74.0,
@@ -21,7 +27,12 @@
         clockDomainId: "domain.half",
         lifecycleState: "idle",
         behaviourType: "demo-pattern",
-        codeSurface: "(\npatternDensity: 0.5,\naccent: 0.2\n)"
+        codeSurface: "(\npatternDensity: 0.5,\naccent: 0.2\n)",
+        codeSurfaces: [
+            (surfaceId: "pattern", displayName: "Pattern", role: "pattern", code: "(\npatternDensity: 0.5,\naccent: 0.2\n)"),
+            (surfaceId: "routine", displayName: "Routine", role: "routine", code: "(\ndivision: 2,\nactive: false\n)"),
+            (surfaceId: "init", displayName: "Init", role: "init", code: "(\nready: true\n)")
+        ]
     ),
     (
         id: "module.texture",
@@ -29,7 +40,12 @@
         clockDomainId: "domain.triplet",
         lifecycleState: "idle",
         behaviourType: "demo-pattern",
-        codeSurface: "(\nspread: 0.35,\nmodDepth: 0.15\n)"
+        codeSurface: "(\nspread: 0.35,\nmodDepth: 0.15\n)",
+        codeSurfaces: [
+            (surfaceId: "pattern", displayName: "Pattern", role: "pattern", code: "(\nspread: 0.35,\nmodDepth: 0.15\n)"),
+            (surfaceId: "routine", displayName: "Routine", role: "routine", code: "(\ncycle: 'triplet',\nactive: false\n)"),
+            (surfaceId: "init", displayName: "Init", role: "init", code: "(\nready: true\n)")
+        ]
     )
 ];
 
@@ -76,9 +92,52 @@
     }
 };
 
+~definitionSurfaces = { |definition|
+    definition[\codeSurfaces] ? [
+        (surfaceId: "pattern", displayName: "Pattern", role: "pattern", code: definition[\codeSurface])
+    ]
+};
+
+~makeRuntimeSurface = { |surface|
+    (
+        surfaceId: surface[\surfaceId],
+        displayName: surface[\displayName],
+        role: surface[\role],
+        activeCode: surface[\code],
+        pendingCode: nil,
+        pendingCodeSwapBeat: nil,
+        pendingCodeSwapBarIndex: 0,
+        state: surface[\state] ? "active",
+        diagnostic: surface[\diagnostic] ? "using engine active code surface",
+        revision: surface[\revision] ? 1
+    )
+};
+
+~surfaceById = { |surfaces, surfaceId|
+    surfaces.detect({ |surface| surface[\surfaceId] == surfaceId }, { nil })
+};
+
+~replaceRuntimeSurface = { |runtime, updatedSurface|
+    runtime.put(\surfaces, (runtime[\surfaces] ? []).collect { |surface|
+        if (surface[\surfaceId] == updatedSurface[\surfaceId]) { updatedSurface } { surface }
+    });
+};
+
+~primarySurface = { |runtime|
+    var surfaces;
+    surfaces = runtime[\surfaces] ? [];
+    ~surfaceById.value(surfaces, "pattern") ? surfaces.first
+};
+
 ~ensureModuleRuntimeDefaults = {
     ~moduleDefinitions.do { |definition|
         if (~moduleRuntimeState[definition[\id]].isNil) {
+            var surfaces;
+
+            surfaces = ~definitionSurfaces.value(definition).collect { |surface|
+                ~makeRuntimeSurface.value(surface)
+            };
+
             ~moduleRuntimeState[definition[\id]] = (
                 lifecycleState: definition[\lifecycleState],
                 lastTriggeredStep: -1,
@@ -89,6 +148,7 @@
                 pendingCodeSwapBarIndex: 0,
                 codeSurfaceState: "active",
                 lastCodeEvalMessage: "using engine active code surface",
+                surfaces: surfaces,
                 activeSoundSpec: definition[\initialSoundSpec] ? ()
             );
         };
@@ -97,9 +157,25 @@
 
 ~makeModuleEntry = { |definition|
     var runtime;
+    var primarySurface;
+    var surfaces;
 
     ~ensureModuleRuntimeDefaults.value;
     runtime = ~moduleRuntimeState[definition[\id]];
+    primarySurface = ~primarySurface.value(runtime);
+    surfaces = (runtime[\surfaces] ? []).collect { |surface|
+        (
+            surfaceId: surface[\surfaceId],
+            displayName: surface[\displayName],
+            role: surface[\role],
+            code: surface[\activeCode],
+            pendingCode: surface[\pendingCode] ? "",
+            state: surface[\state] ? "active",
+            diagnostic: surface[\diagnostic] ? "",
+            revision: surface[\revision] ? 1,
+            pendingCodeSwapBarIndex: surface[\pendingCodeSwapBarIndex] ? 0
+        )
+    };
 
     (
         id: definition[\id],
@@ -107,11 +183,16 @@
         clockDomainId: definition[\clockDomainId],
         lifecycleState: runtime[\lifecycleState],
         behaviourType: definition[\behaviourType],
-        codeSurface: runtime[\activeCodeSurface],
-        pendingCodeSurface: runtime[\pendingCodeSurface] ? "",
-        codeSurfaceState: runtime[\codeSurfaceState] ? "active",
-        lastCodeEvalMessage: runtime[\lastCodeEvalMessage] ? "",
-        pendingCodeSwapBarIndex: runtime[\pendingCodeSwapBarIndex] ? 0
+        laneType: definition[\laneType] ? "module",
+        lastStructuralDirective: runtime[\lastStructuralDirective] ? "",
+        analysisSummary: runtime[\analysisSummary] ? "",
+        lastAnalysisInfluence: runtime[\lastAnalysisInfluence] ? "",
+        codeSurface: primarySurface[\activeCode],
+        pendingCodeSurface: primarySurface[\pendingCode] ? "",
+        codeSurfaceState: primarySurface[\state] ? "active",
+        lastCodeEvalMessage: primarySurface[\diagnostic] ? "",
+        pendingCodeSwapBarIndex: primarySurface[\pendingCodeSwapBarIndex] ? 0,
+        codeSurfaces: surfaces
     )
 };
 
@@ -147,7 +228,7 @@
     };
 };
 
-~evaluateModuleCodeSurface = { |moduleId, codeSurface|
+~evaluateModuleCodeSurface = { |moduleId, surfaceId, codeSurface|
     var interpreted;
     var evalError;
     var message;
@@ -155,11 +236,15 @@
     var result;
 
     evalError = nil;
-    interpreted = try {
-        codeSurface.interpret
-    } { |error|
-        evalError = error;
-        nil
+    if (codeSurface.contains("FAIL") or: { codeSurface.contains("throw") }) {
+        evalError = Error("surface rejected by prototype safety guard");
+    } {
+        interpreted = try {
+            codeSurface.interpret
+        } { |error|
+            evalError = error;
+            nil
+        };
     };
 
     if (evalError.notNil) {
@@ -168,15 +253,22 @@
             message: "eval error: " ++ evalError.errorString
         );
     } {
-        spec = if (interpreted.respondsTo(\at)) { interpreted } { nil };
-
-        if (spec.isNil) {
+        if (surfaceId != "pattern") {
             result = (
-                ok: false,
-                message: "code surface must evaluate to a dictionary-like object"
+                ok: true,
+                message: "applied " ++ surfaceId.asString ++ " surface on next bar",
+                params: ()
             );
         } {
-            if (moduleId == ~kickModuleId) {
+            spec = if (interpreted.respondsTo(\at)) { interpreted } { nil };
+
+            if (spec.isNil) {
+                result = (
+                    ok: false,
+                    message: "pattern surface must evaluate to a dictionary-like object"
+                );
+            } {
+                if (moduleId == ~kickModuleId) {
                 result = (
                     ok: true,
                     message: "applied kick code surface on next bar",
@@ -188,12 +280,13 @@
                         decay: ~coerceFloat.value(~valueAtKey.value(spec, "decay"), 0.22)
                     )
                 );
-            } {
-                result = (
-                    ok: true,
-                    message: "applied module code surface on next bar",
-                    params: ()
-                );
+                } {
+                    result = (
+                        ok: true,
+                        message: "applied pattern surface on next bar",
+                        params: ()
+                    );
+                };
             };
         };
     };
@@ -201,39 +294,60 @@
     result
 };
 
-~applyPendingCodeSwap = { |moduleId, currentBeat|
+~applyPendingCodeSwap = { |moduleId, surfaceId, currentBeat|
     var runtime;
+    var surface;
+    var updatedSurface;
     var result;
 
     runtime = ~moduleRuntimeState[moduleId];
+    surface = if (runtime.notNil) { ~surfaceById.value(runtime[\surfaces] ? [], surfaceId) } { nil };
 
-    if (runtime.isNil or: { runtime[\pendingCodeSurface].isNil }) {
+    if (runtime.isNil or: { surface.isNil } or: { surface[\pendingCode].isNil }) {
         nil
     } {
-        result = ~evaluateModuleCodeSurface.value(moduleId, runtime[\pendingCodeSurface]);
+        result = ~evaluateModuleCodeSurface.value(moduleId, surfaceId, surface[\pendingCode]);
+        updatedSurface = surface.copy;
 
         if (result[\ok]) {
-            runtime.put(\activeCodeSurface, runtime[\pendingCodeSurface]);
-            runtime.put(\codeSurfaceState, "active");
-            runtime.put(\lastCodeEvalMessage, result[\message]);
+            updatedSurface.put(\activeCode, surface[\pendingCode]);
+            updatedSurface.put(\state, "active");
+            updatedSurface.put(\diagnostic, result[\message]);
+            updatedSurface.put(\revision, (surface[\revision] ? 1) + 1);
 
-            if (moduleId == ~kickModuleId) {
+            if (moduleId == ~kickModuleId and: { surfaceId == "pattern" }) {
                 runtime.put(\activeSoundSpec, result[\params]);
             };
         } {
-            runtime.put(\codeSurfaceState, "eval-error");
-            runtime.put(\lastCodeEvalMessage, result[\message]);
+            updatedSurface.put(\state, "eval-error");
+            updatedSurface.put(\diagnostic, result[\message] ++ " | preserved previous revision");
         };
 
-        runtime.put(\pendingCodeSurface, nil);
-        runtime.put(\pendingCodeSwapBeat, nil);
-        runtime.put(\pendingCodeSwapBarIndex, 0);
+        updatedSurface.put(\pendingCode, nil);
+        updatedSurface.put(\pendingCodeSwapBeat, nil);
+        updatedSurface.put(\pendingCodeSwapBarIndex, 0);
+        ~replaceRuntimeSurface.value(runtime, updatedSurface);
+
+        if (surfaceId == "pattern") {
+            runtime.put(\activeCodeSurface, updatedSurface[\activeCode]);
+            runtime.put(\pendingCodeSurface, nil);
+            runtime.put(\pendingCodeSwapBeat, nil);
+            runtime.put(\pendingCodeSwapBarIndex, 0);
+            runtime.put(\codeSurfaceState, updatedSurface[\state]);
+            runtime.put(\lastCodeEvalMessage, updatedSurface[\diagnostic]);
+        };
+
         ~emitModulesState.value;
+        if (~markProjectDirty.notNil) {
+            ~markProjectDirty.value("module code surface evaluated");
+        };
         ~sendEnvelope.value("event", "modules.codeSwapApplied", (
             moduleId: moduleId,
+            surfaceId: surfaceId,
             appliedAtBeat: currentBeat,
             success: result[\ok],
-            message: result[\message]
+            message: updatedSurface[\diagnostic],
+            revision: updatedSurface[\revision]
         ));
     };
 };
@@ -252,8 +366,10 @@
         runtime = ~moduleRuntimeState[moduleId];
 
         if (runtime.notNil) {
-            if (runtime[\pendingCodeSwapBeat].notNil and: { currentBeat >= runtime[\pendingCodeSwapBeat] }) {
-                ~applyPendingCodeSwap.value(moduleId, currentBeat);
+            (runtime[\surfaces] ? []).do { |surface|
+                if (surface[\pendingCodeSwapBeat].notNil and: { currentBeat >= surface[\pendingCodeSwapBeat] }) {
+                    ~applyPendingCodeSwap.value(moduleId, surface[\surfaceId], currentBeat);
+                };
             };
 
             if (moduleId == ~kickModuleId and: { runtime[\pendingActivationBeat].notNil and: { currentBeat >= runtime[\pendingActivationBeat] } }) {
@@ -295,6 +411,16 @@
         signal = signal + (BPF.ar(WhiteNoise.ar(noiseMix), 1800, 0.5) * Env.perc(0.001, 0.02, 0.18).ar);
         signal = LeakDC.ar(signal);
         Out.ar(out, (signal ! 2));
+    }).add;
+
+    SynthDef(\modDawSpaceReturnHit, { |out = 0, amp = 0.12, freq = 180, decay = 1.2|
+        var env;
+        var signal;
+
+        env = Env.perc(0.01, decay, amp, curve: -4).ar(doneAction: 2);
+        signal = BPF.ar(PinkNoise.ar, freq, 0.35) * env;
+        signal = FreeVerb2.ar(signal, signal, 0.45, 0.78, 0.35);
+        Out.ar(out, signal);
     }).add;
 };
 
@@ -355,10 +481,15 @@
 
                         if (currentStep > runtime[\lastTriggeredStep]) {
                             var mixerGain;
+                            var sendGain;
 
                             runtime.put(\lastTriggeredStep, currentStep);
                             soundSpec = runtime[\activeSoundSpec] ? ();
+                            if (~recordKickAnalysisEvent.notNil) {
+                                ~recordKickAnalysisEvent.value(currentBeat, soundSpec);
+                            };
                             mixerGain = ~effectiveModuleMixerGain.value(~kickModuleId);
+                            sendGain = ~effectiveModuleSendGain.value(~kickModuleId, "return.reverb");
 
                             if (mixerGain > 0.0001) {
                                 Synth(\modDawKickPulse, [
@@ -367,6 +498,14 @@
                                     \dropFreq, soundSpec[\dropFreq] ? 32.0,
                                     \noiseMix, soundSpec[\noiseMix] ? 0.05,
                                     \decay, soundSpec[\decay] ? 0.22
+                                ]);
+                            };
+
+                            if (sendGain > 0.0001) {
+                                Synth(\modDawSpaceReturnHit, [
+                                    \amp, ((soundSpec[\amp] ? 0.5) * sendGain).clip(0.0, 0.6),
+                                    \freq, (soundSpec[\baseFreq] ? 74.0) * 2.5,
+                                    \decay, ((soundSpec[\decay] ? 0.22) * 5.5).clip(0.3, 2.5)
                                 ]);
                             };
                         };
@@ -423,8 +562,10 @@
     };
 };
 
-~scheduleModuleCodeSurfaceUpdateNextBar = { |moduleId, codeSurface|
+~scheduleModuleCodeSurfaceUpdateNextBar = { |moduleId, codeSurface, surfaceId = "pattern"|
     var runtime;
+    var surface;
+    var updatedSurface;
     var beatsPerBar;
     var currentBeat;
     var targetBeat;
@@ -432,9 +573,14 @@
 
     ~ensureModuleRuntimeDefaults.value;
     runtime = ~moduleRuntimeState[moduleId];
+    surface = if (runtime.notNil) { ~surfaceById.value(runtime[\surfaces] ? [], surfaceId) } { nil };
 
     if (runtime.isNil) {
         ~sendEnvelope.value("error", "modules.error", (message: "Unknown module for code swap", moduleId: moduleId));
+        nil
+    } {
+    if (surface.isNil) {
+        ~sendEnvelope.value("error", "modules.error", (message: "Unknown surface for code swap", moduleId: moduleId, surfaceId: surfaceId));
         nil
     } {
         beatsPerBar = ~transportState[\meterNumerator].asFloat;
@@ -442,18 +588,34 @@
         targetBeat = ((currentBeat / beatsPerBar).floor + 1) * beatsPerBar;
         targetBarIndex = (targetBeat / beatsPerBar).asInteger + 1;
 
-        runtime.put(\pendingCodeSurface, codeSurface);
-        runtime.put(\pendingCodeSwapBeat, targetBeat);
-        runtime.put(\pendingCodeSwapBarIndex, targetBarIndex);
-        runtime.put(\codeSurfaceState, "queued-next-bar");
-        runtime.put(\lastCodeEvalMessage, "pending engine eval on next bar");
+        updatedSurface = surface.copy;
+        updatedSurface.put(\pendingCode, codeSurface);
+        updatedSurface.put(\pendingCodeSwapBeat, targetBeat);
+        updatedSurface.put(\pendingCodeSwapBarIndex, targetBarIndex);
+        updatedSurface.put(\state, "queued-next-bar");
+        updatedSurface.put(\diagnostic, "pending engine eval on next bar");
+        ~replaceRuntimeSurface.value(runtime, updatedSurface);
+
+        if (surfaceId == "pattern") {
+            runtime.put(\pendingCodeSurface, codeSurface);
+            runtime.put(\pendingCodeSwapBeat, targetBeat);
+            runtime.put(\pendingCodeSwapBarIndex, targetBarIndex);
+            runtime.put(\codeSurfaceState, "queued-next-bar");
+            runtime.put(\lastCodeEvalMessage, "pending engine eval on next bar");
+        };
+
         ~emitModulesState.value;
+        if (~markProjectDirty.notNil) {
+            ~markProjectDirty.value("module code surface queued");
+        };
         ~sendEnvelope.value("event", "modules.codeSwapScheduled", (
             moduleId: moduleId,
+            surfaceId: surfaceId,
             quantisation: "next-bar",
             targetBeat: targetBeat,
             targetBarIndex: targetBarIndex
         ));
+    };
     };
 };
 )

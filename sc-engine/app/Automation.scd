@@ -155,6 +155,7 @@
         point = (beat: beat, value: value.asFloat.clip(0.0, 1.5));
         lane.put(\points, ~sortAutomationPoints.value((lane[\points] ? []).reject({ |existing| (existing[\beat] ? 0.0) == beat }).add(point)));
         ~emitAutomationState.value;
+        if (~markProjectDirty.notNil) { ~markProjectDirty.value("automation point added") };
         ~sendEnvelope.value("event", "automation.pointAdded", (laneId: laneId, beat: beat, value: point[\value]), correlationId);
     };
 };
@@ -174,6 +175,7 @@
         ]);
         lane.put(\currentValue, 1.0);
         ~emitAutomationState.value;
+        if (~markProjectDirty.notNil) { ~markProjectDirty.value("automation reset") };
         ~sendEnvelope.value("event", "automation.reset", (laneId: laneId), correlationId);
     };
 };

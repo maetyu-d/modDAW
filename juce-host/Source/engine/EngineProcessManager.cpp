@@ -113,7 +113,10 @@ void EngineProcessManager::stop()
         mixerState = {};
         routeState = {};
         regionState = {};
+        recoveryState = {};
         automationState = {};
+        analysisState = {};
+        structuralState = {};
         validationState = {};
         childOutputBuffer.clear();
     }
@@ -171,10 +174,28 @@ RegionState EngineProcessManager::getRegionState() const
     return regionState;
 }
 
+RecoveryState EngineProcessManager::getRecoveryState() const
+{
+    const juce::ScopedLock scopedLock(lock);
+    return recoveryState;
+}
+
 AutomationState EngineProcessManager::getAutomationState() const
 {
     const juce::ScopedLock scopedLock(lock);
     return automationState;
+}
+
+AnalysisState EngineProcessManager::getAnalysisState() const
+{
+    const juce::ScopedLock scopedLock(lock);
+    return analysisState;
+}
+
+StructuralState EngineProcessManager::getStructuralState() const
+{
+    const juce::ScopedLock scopedLock(lock);
+    return structuralState;
 }
 
 ValidationState EngineProcessManager::getValidationState() const
@@ -203,6 +224,14 @@ void EngineProcessManager::requestClockDomainState()
     sendClockDomainsRequestState();
 }
 
+void EngineProcessManager::requestClockDomainRelation(const juce::String& domainId,
+                                                      const juce::String& relationType,
+                                                      double phaseOffsetBeats)
+{
+    if (domainId.isNotEmpty() && relationType.isNotEmpty())
+        sendClockDomainsSetRelation(domainId, relationType, phaseOffsetBeats);
+}
+
 void EngineProcessManager::requestModuleState()
 {
     sendModulesRequestState();
@@ -228,9 +257,24 @@ void EngineProcessManager::requestAutomationState()
     sendAutomationRequestState();
 }
 
+void EngineProcessManager::requestAnalysisState()
+{
+    sendAnalysisRequestState();
+}
+
+void EngineProcessManager::requestStructuralState()
+{
+    sendStructuralRequestState();
+}
+
 void EngineProcessManager::requestValidationState()
 {
     sendValidationRequestState();
+}
+
+void EngineProcessManager::requestRecoveryState()
+{
+    sendRecoveryRequestState();
 }
 
 void EngineProcessManager::requestModuleActivateNextBar(const juce::String& moduleId)
@@ -239,10 +283,12 @@ void EngineProcessManager::requestModuleActivateNextBar(const juce::String& modu
         sendModulesActivateNextBar(moduleId);
 }
 
-void EngineProcessManager::requestModuleCodeSurfaceUpdateNextBar(const juce::String& moduleId, const juce::String& codeSurface)
+void EngineProcessManager::requestModuleCodeSurfaceUpdateNextBar(const juce::String& moduleId,
+                                                                 const juce::String& surfaceId,
+                                                                 const juce::String& codeSurface)
 {
-    if (moduleId.isNotEmpty() && codeSurface.isNotEmpty())
-        sendModulesUpdateCodeSurfaceNextBar(moduleId, codeSurface);
+    if (moduleId.isNotEmpty() && surfaceId.isNotEmpty() && codeSurface.isNotEmpty())
+        sendModulesUpdateCodeSurfaceNextBar(moduleId, surfaceId, codeSurface);
 }
 
 void EngineProcessManager::requestMixerStripLevel(const juce::String& stripId, double level)
@@ -255,6 +301,24 @@ void EngineProcessManager::requestMixerStripMuted(const juce::String& stripId, b
 {
     if (stripId.isNotEmpty())
         sendMixerSetMuted(stripId, muted);
+}
+
+void EngineProcessManager::requestMixerStripGroup(const juce::String& stripId, const juce::String& groupId)
+{
+    if (stripId.isNotEmpty())
+        sendMixerAssignGroup(stripId, groupId);
+}
+
+void EngineProcessManager::requestMixerSendLevel(const juce::String& sendId, double level)
+{
+    if (sendId.isNotEmpty())
+        sendMixerSetSendLevel(sendId, level);
+}
+
+void EngineProcessManager::requestMixerSendMode(const juce::String& sendId, const juce::String& mode)
+{
+    if (sendId.isNotEmpty() && mode.isNotEmpty())
+        sendMixerSetSendMode(sendId, mode);
 }
 
 void EngineProcessManager::requestRouteCreate(const juce::String& family,
@@ -286,6 +350,12 @@ void EngineProcessManager::requestModuleFreezeToRegion(const juce::String& modul
 {
     if (moduleId.isNotEmpty())
         sendModuleFreezeToRegion(moduleId);
+}
+
+void EngineProcessManager::requestModuleLiveLinkedRegion(const juce::String& moduleId)
+{
+    if (moduleId.isNotEmpty())
+        sendModuleLiveLinkedRegion(moduleId);
 }
 
 void EngineProcessManager::requestRegionMove(const juce::String& regionId, double deltaBeats)
@@ -322,6 +392,26 @@ void EngineProcessManager::requestAutomationResetDemo(const juce::String& laneId
 {
     if (laneId.isNotEmpty())
         sendAutomationResetDemo(laneId);
+}
+
+void EngineProcessManager::requestSceneTransition(const juce::String& quantizationTarget,
+                                                  int afterCycles,
+                                                  const juce::String& domainId,
+                                                  const juce::String& sceneName)
+{
+    if (quantizationTarget.isNotEmpty() && domainId.isNotEmpty() && sceneName.isNotEmpty())
+        sendStructuralScheduleSceneTransition(quantizationTarget, afterCycles, domainId, sceneName);
+}
+
+void EngineProcessManager::requestExternalCue(const juce::String& cueName)
+{
+    sendStructuralExternalCue(cueName.isNotEmpty() ? cueName : juce::String("manual"));
+}
+
+void EngineProcessManager::requestPerformanceMacro(const juce::String& macroId, double value)
+{
+    if (macroId.isNotEmpty())
+        sendPerformanceTriggerMacro(macroId, value);
 }
 
 void EngineProcessManager::run()
@@ -395,6 +485,8 @@ void EngineProcessManager::run()
         routeState = {};
         regionState = {};
         automationState = {};
+        analysisState = {};
+        structuralState = {};
         validationState = {};
     }
 
@@ -448,7 +540,11 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         sendRoutesRequestState();
         sendRegionsRequestState();
         sendAutomationRequestState();
+        sendAnalysisRequestState();
+        sendStructuralRequestState();
+        sendPerformanceRequestState();
         sendValidationRequestState();
+        sendRecoveryRequestState();
         return;
     }
 
@@ -482,6 +578,21 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         }
 
         appendLog("CLOCK-DOMAINS " + newClockDomainState.toSummaryString());
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeClockDomainsRelationChanged)
+    {
+        appendLog("CLOCK-DOMAINS relation changed " + juce::JSON::toString(envelope.payload, false));
+        sendClockDomainsRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeClockDomainsRelationRejected)
+    {
+        appendLog("CLOCK-DOMAINS relation rejected " + juce::JSON::toString(envelope.payload, false));
+        sendClockDomainsRequestState();
+        sendValidationRequestState();
         return;
     }
 
@@ -551,6 +662,82 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         return;
     }
 
+    if (envelope.type == moddaw::ids::typeAnalysisState)
+    {
+        auto newAnalysisState = AnalysisState::fromPayload(envelope.payload);
+
+        {
+            const juce::ScopedLock scopedLock(lock);
+            analysisState = newAnalysisState;
+        }
+
+        appendLog("ANALYSIS " + newAnalysisState.toSummaryString());
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeStructuralState)
+    {
+        auto newStructuralState = StructuralState::fromPayload(envelope.payload);
+
+        {
+            const juce::ScopedLock scopedLock(lock);
+            structuralState = newStructuralState;
+        }
+
+        appendLog("STRUCTURAL " + newStructuralState.toSummaryString());
+        sendModulesRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeStructuralSceneTransitionScheduled)
+    {
+        appendLog("STRUCTURAL scene transition scheduled " + juce::JSON::toString(envelope.payload, false));
+        sendStructuralRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeStructuralSceneTransitionApplied)
+    {
+        appendLog("STRUCTURAL scene transition applied " + juce::JSON::toString(envelope.payload, false));
+        sendStructuralRequestState();
+        sendModulesRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeStructuralSceneTransitionRejected)
+    {
+        appendLog("STRUCTURAL scene transition rejected " + juce::JSON::toString(envelope.payload, false));
+        sendStructuralRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeStructuralExternalCueReceived)
+    {
+        appendLog("STRUCTURAL external cue " + juce::JSON::toString(envelope.payload, false));
+        sendStructuralRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typePerformanceState)
+    {
+        appendLog("PERFORMANCE " + juce::JSON::toString(envelope.payload, false));
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typePerformanceMacroTriggered)
+    {
+        appendLog("PERFORMANCE macro " + juce::JSON::toString(envelope.payload, false));
+        sendModulesRequestState();
+        sendStructuralRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typePerformanceError)
+    {
+        appendLog("PERFORMANCE error " + juce::JSON::toString(envelope.payload, false));
+        return;
+    }
+
     if (envelope.type == moddaw::ids::typeValidationState)
     {
         auto newValidationState = ValidationState::fromPayload(envelope.payload);
@@ -561,6 +748,33 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         }
 
         appendLog("VALIDATION " + newValidationState.toSummaryString());
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeRecoveryState)
+    {
+        auto newRecoveryState = RecoveryState::fromPayload(envelope.payload);
+
+        {
+            const juce::ScopedLock scopedLock(lock);
+            recoveryState = newRecoveryState;
+        }
+
+        appendLog("RECOVERY " + newRecoveryState.toSummaryString());
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeRecovered)
+    {
+        appendLog("RECOVERY restored autosave " + juce::JSON::toString(envelope.payload, false));
+        sendClockDomainsRequestState();
+        sendModulesRequestState();
+        sendRoutesRequestState();
+        sendRegionsRequestState();
+        sendAutomationRequestState();
+        sendMixerRequestState();
+        sendValidationRequestState();
+        sendRecoveryRequestState();
         return;
     }
 
@@ -580,6 +794,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
     {
         appendLog("MODULES code swap applied " + juce::JSON::toString(envelope.payload, false));
         sendModulesRequestState();
+        sendRecoveryRequestState();
         return;
     }
 
@@ -621,6 +836,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
     if (envelope.type == moddaw::ids::typeProjectSaved)
     {
         appendLog("PROJECT saved " + juce::JSON::toString(envelope.payload, false));
+        sendRecoveryRequestState();
         return;
     }
 
@@ -632,14 +848,25 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         sendRoutesRequestState();
         sendRegionsRequestState();
         sendAutomationRequestState();
+        sendAnalysisRequestState();
+        sendStructuralRequestState();
+        sendPerformanceRequestState();
         sendMixerRequestState();
         sendValidationRequestState();
+        sendRecoveryRequestState();
         return;
     }
 
     if (envelope.type == moddaw::ids::typeProjectError)
     {
         appendLog("PROJECT error " + juce::JSON::toString(envelope.payload, false));
+        return;
+    }
+
+    if (envelope.kind == MessageKind::error)
+    {
+        appendLog("ENGINE error " + envelope.type + " " + juce::JSON::toString(envelope.payload, false));
+        sendRecoveryRequestState();
         return;
     }
 }
@@ -650,7 +877,7 @@ void EngineProcessManager::sendHandshake()
                                  moddaw::ids::typeHandshake,
                                  makeObject({
                                      { "hostName", "modular-sc-daw" },
-                                     { "milestone", "M17" }
+                                     { "milestone", "M28" }
                                  })));
 }
 
@@ -699,6 +926,19 @@ void EngineProcessManager::sendClockDomainsRequestState()
                                  })));
 }
 
+void EngineProcessManager::sendClockDomainsSetRelation(const juce::String& domainId,
+                                                       const juce::String& relationType,
+                                                       double phaseOffsetBeats)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeClockDomainsSetRelation,
+                                 makeObject({
+                                     { "domainId", domainId },
+                                     { "relationType", relationType },
+                                     { "phaseOffsetBeats", phaseOffsetBeats }
+                                 })));
+}
+
 void EngineProcessManager::sendModulesRequestState()
 {
     connection.send(makeEnvelope(MessageKind::query,
@@ -744,12 +984,39 @@ void EngineProcessManager::sendAutomationRequestState()
                                  })));
 }
 
+void EngineProcessManager::sendAnalysisRequestState()
+{
+    connection.send(makeEnvelope(MessageKind::query,
+                                 moddaw::ids::typeAnalysisRequestState,
+                                 makeObject({
+                                     { "request", "analysis-state" }
+                                 })));
+}
+
+void EngineProcessManager::sendStructuralRequestState()
+{
+    connection.send(makeEnvelope(MessageKind::query,
+                                 moddaw::ids::typeStructuralRequestState,
+                                 makeObject({
+                                     { "request", "structural-state" }
+                                 })));
+}
+
 void EngineProcessManager::sendValidationRequestState()
 {
     connection.send(makeEnvelope(MessageKind::query,
                                  moddaw::ids::typeValidationRequestState,
                                  makeObject({
                                      { "request", "validation-state" }
+                                 })));
+}
+
+void EngineProcessManager::sendRecoveryRequestState()
+{
+    connection.send(makeEnvelope(MessageKind::query,
+                                 moddaw::ids::typeRecoveryRequestState,
+                                 makeObject({
+                                     { "request", "recovery-state" }
                                  })));
 }
 
@@ -770,6 +1037,36 @@ void EngineProcessManager::sendMixerSetMuted(const juce::String& stripId, bool m
                                  makeObject({
                                      { "stripId", stripId },
                                      { "muted", muted }
+                                 })));
+}
+
+void EngineProcessManager::sendMixerAssignGroup(const juce::String& stripId, const juce::String& groupId)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeMixerAssignGroup,
+                                 makeObject({
+                                     { "stripId", stripId },
+                                     { "groupId", groupId }
+                                 })));
+}
+
+void EngineProcessManager::sendMixerSetSendLevel(const juce::String& sendId, double level)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeMixerSetSendLevel,
+                                 makeObject({
+                                     { "sendId", sendId },
+                                     { "level", level }
+                                 })));
+}
+
+void EngineProcessManager::sendMixerSetSendMode(const juce::String& sendId, const juce::String& mode)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeMixerSetSendMode,
+                                 makeObject({
+                                     { "sendId", sendId },
+                                     { "mode", mode }
                                  })));
 }
 
@@ -822,6 +1119,16 @@ void EngineProcessManager::sendModuleFreezeToRegion(const juce::String& moduleId
                                  makeObject({
                                      { "moduleId", moduleId },
                                      { "mode", "freeze" }
+                                 })));
+}
+
+void EngineProcessManager::sendModuleLiveLinkedRegion(const juce::String& moduleId)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRegionsCreateLiveLinked,
+                                 makeObject({
+                                     { "moduleId", moduleId },
+                                     { "mode", "live-linked" }
                                  })));
 }
 
@@ -886,6 +1193,50 @@ void EngineProcessManager::sendAutomationResetDemo(const juce::String& laneId)
                                  })));
 }
 
+void EngineProcessManager::sendStructuralScheduleSceneTransition(const juce::String& quantizationTarget,
+                                                                 int afterCycles,
+                                                                 const juce::String& domainId,
+                                                                 const juce::String& sceneName)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeStructuralScheduleSceneTransition,
+                                 makeObject({
+                                     { "quantizationTarget", quantizationTarget },
+                                     { "afterCycles", afterCycles },
+                                     { "domainId", domainId },
+                                     { "sceneName", sceneName }
+                                 })));
+}
+
+void EngineProcessManager::sendStructuralExternalCue(const juce::String& cueName)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeStructuralExternalCue,
+                                 makeObject({
+                                     { "cueName", cueName }
+                                 })));
+}
+
+void EngineProcessManager::sendPerformanceRequestState()
+{
+    connection.send(makeEnvelope(MessageKind::query,
+                                 moddaw::ids::typePerformanceRequestState,
+                                 makeObject({
+                                     { "request", "performance-state" }
+                                 })));
+}
+
+void EngineProcessManager::sendPerformanceTriggerMacro(const juce::String& macroId, double value)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typePerformanceTriggerMacro,
+                                 makeObject({
+                                     { "macroId", macroId },
+                                     { "value", value },
+                                     { "inputSource", "juce-host" }
+                                 })));
+}
+
 void EngineProcessManager::sendModulesActivateNextBar(const juce::String& moduleId)
 {
     connection.send(makeEnvelope(MessageKind::command,
@@ -896,12 +1247,15 @@ void EngineProcessManager::sendModulesActivateNextBar(const juce::String& module
                                  })));
 }
 
-void EngineProcessManager::sendModulesUpdateCodeSurfaceNextBar(const juce::String& moduleId, const juce::String& codeSurface)
+void EngineProcessManager::sendModulesUpdateCodeSurfaceNextBar(const juce::String& moduleId,
+                                                               const juce::String& surfaceId,
+                                                               const juce::String& codeSurface)
 {
     connection.send(makeEnvelope(MessageKind::command,
                                  moddaw::ids::typeModulesUpdateCodeSurfaceNextBar,
                                  makeObject({
                                      { "moduleId", moduleId },
+                                     { "surfaceId", surfaceId },
                                      { "codeSurface", codeSurface },
                                      { "quantisation", "next-bar" }
                                  })));

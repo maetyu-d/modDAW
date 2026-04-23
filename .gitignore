@@ -20,3 +20,6 @@ third_party/supercollider/
 
 # Logs
 *.log
+
+# Runtime recovery snapshots
+sc-engine/projects/recovery-autosave.json

@@ -25,7 +25,8 @@ double readDouble(const juce::var& object, const juce::Identifier& propertyName,
 juce::String RegionEntry::toSummaryString() const
 {
     return displayName + " [" + regionId + "] beat=" + juce::String(startBeat, 2)
-         + " len=" + juce::String(lengthBeats, 2);
+         + " len=" + juce::String(lengthBeats, 2)
+         + " identity=" + regionIdentity;
 }
 
 RegionState RegionState::fromPayload(const juce::var& payload)
@@ -43,7 +44,11 @@ RegionState RegionState::fromPayload(const juce::var& payload)
                 region.moduleId = readString(item, "moduleId");
                 region.displayName = readString(item, "displayName");
                 region.kind = readString(item, "kind");
+                region.regionIdentity = readString(item, "regionIdentity");
+                region.editPolicy = readString(item, "editPolicy");
                 region.source = readString(item, "source");
+                region.linkedModuleId = readString(item, "linkedModuleId");
+                region.lastEditMessage = readString(item, "lastEditMessage");
                 region.startBeat = readDouble(item, "startBeat", 0.0);
                 region.lengthBeats = readDouble(item, "lengthBeats", 0.0);
                 state.regions.add(region);

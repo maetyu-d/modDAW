@@ -2,6 +2,21 @@
 
 #include <JuceHeader.h>
 
+struct CodeSurfaceEntry
+{
+    juce::String surfaceId;
+    juce::String displayName;
+    juce::String role;
+    juce::String code;
+    juce::String pendingCode;
+    juce::String state;
+    juce::String diagnostic;
+    int revision = 1;
+    int pendingCodeSwapBarIndex = 0;
+
+    juce::String currentEditableCode() const;
+};
+
 struct ModuleEntry
 {
     juce::String id;
@@ -9,14 +24,21 @@ struct ModuleEntry
     juce::String clockDomainId;
     juce::String lifecycleState;
     juce::String behaviourType;
+    juce::String laneType;
+    juce::String lastStructuralDirective;
+    juce::String analysisSummary;
+    juce::String lastAnalysisInfluence;
     juce::String codeSurface;
     juce::String pendingCodeSurface;
     juce::String codeSurfaceState;
     juce::String lastCodeEvalMessage;
     int pendingCodeSwapBarIndex = 0;
+    juce::Array<CodeSurfaceEntry> codeSurfaces;
 
     juce::String toSummaryString() const;
     juce::String currentEditableCodeSurface() const;
+    const CodeSurfaceEntry* findSurfaceById(const juce::String& surfaceId) const;
+    const CodeSurfaceEntry* defaultSurface() const;
 };
 
 struct ModuleState

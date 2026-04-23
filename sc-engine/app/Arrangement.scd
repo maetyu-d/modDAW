@@ -78,6 +78,8 @@
                 moduleId: moduleId,
                 displayName: moduleDefinition[\displayName] ++ " Freeze",
                 kind: "frozen-demo-audio",
+                regionIdentity: "frozen",
+                editPolicy: "detached-audio",
                 source: "freeze",
                 startBeat: startBeat,
                 lengthBeats: beatsPerBar,
@@ -88,6 +90,7 @@
 
             ~arrangementRegions = ~arrangementRegions.add(region);
             ~emitArrangementState.value;
+            if (~markProjectDirty.notNil) { ~markProjectDirty.value("module frozen to region") };
             ~sendEnvelope.value("event", "regions.created", (
                 regionId: region[\regionId],
                 moduleId: moduleId,
@@ -95,6 +98,56 @@
                 lengthBeats: beatsPerBar
             ), correlationId);
         };
+    };
+};
+
+~createLiveLinkedRegion = { |moduleId, correlationId = nil|
+    var moduleDefinition;
+    var currentBeat;
+    var beatsPerBar;
+    var startBeat;
+    var region;
+
+    ~ensureModuleRuntimeDefaults.value;
+    moduleDefinition = ~definitionForModuleId.value(moduleId);
+
+    if (moduleDefinition.isNil) {
+        ~sendEnvelope.value("error", "regions.error", (
+            message: "Unknown module for live-linked region",
+            moduleId: moduleId
+        ), correlationId);
+        nil
+    } {
+        beatsPerBar = ~transportState[\meterNumerator].asFloat;
+        currentBeat = ~captureTransportBeats.value;
+        startBeat = (currentBeat / beatsPerBar).floor * beatsPerBar;
+
+        region = (
+            regionId: ~makeRegionId.value,
+            moduleId: moduleId,
+            displayName: moduleDefinition[\displayName] ++ " Live Link",
+            kind: "live-linked-module",
+            regionIdentity: "live-linked",
+            editPolicy: "projection-only",
+            source: "live-link",
+            startBeat: startBeat,
+            lengthBeats: beatsPerBar * 2.0,
+            eventOffsets: [0.0, 1.0, 2.0, 3.0],
+            replayedEventIndexes: [],
+            linkedModuleId: moduleId,
+            soundSpec: ()
+        );
+
+        ~arrangementRegions = ~arrangementRegions.add(region);
+        ~emitArrangementState.value;
+        if (~markProjectDirty.notNil) { ~markProjectDirty.value("live-linked region created") };
+        ~sendEnvelope.value("event", "regions.created", (
+            regionId: region[\regionId],
+            moduleId: moduleId,
+            regionIdentity: "live-linked",
+            startBeat: startBeat,
+            lengthBeats: region[\lengthBeats]
+        ), correlationId);
     };
 };
 
@@ -110,8 +163,10 @@
         updatedRegion = region.copy;
         updatedRegion.put(\startBeat, ~snapBeat.value((region[\startBeat] ? 0.0) + deltaBeats.asFloat));
         updatedRegion.put(\replayedEventIndexes, []);
+        updatedRegion.put(\lastEditMessage, "moved arrangement projection; module clock semantics unchanged");
         ~replaceRegion.value(updatedRegion);
         ~emitArrangementState.value;
+        if (~markProjectDirty.notNil) { ~markProjectDirty.value("region moved") };
         ~sendEnvelope.value("event", "regions.edited", (regionId: regionId, edit: "move"), correlationId);
     };
 };
@@ -129,10 +184,18 @@
         newLength = ((region[\lengthBeats] ? 1.0) + deltaBeats.asFloat).round(1.0).max(1.0);
         updatedRegion = region.copy;
         updatedRegion.put(\lengthBeats, newLength);
-        updatedRegion.put(\eventOffsets, (region[\eventOffsets] ? []).select({ |offset| offset < newLength }));
+        if ((region[\regionIdentity] ? "frozen") == "frozen") {
+            updatedRegion.put(\eventOffsets, (region[\eventOffsets] ? []).select({ |offset| offset < newLength }));
+        };
         updatedRegion.put(\replayedEventIndexes, []);
+        updatedRegion.put(\lastEditMessage, if ((region[\regionIdentity] ? "frozen") == "live-linked") {
+            "trimmed live-linked projection only; source module unchanged"
+        } {
+            "trimmed frozen detached material"
+        });
         ~replaceRegion.value(updatedRegion);
         ~emitArrangementState.value;
+        if (~markProjectDirty.notNil) { ~markProjectDirty.value("region trimmed") };
         ~sendEnvelope.value("event", "regions.edited", (regionId: regionId, edit: "trim"), correlationId);
     };
 };
@@ -159,19 +222,26 @@
             leftRegion.put(\regionId, ~makeRegionId.value);
             leftRegion.put(\displayName, region[\displayName] ++ " A");
             leftRegion.put(\lengthBeats, splitOffset);
-            leftRegion.put(\eventOffsets, (region[\eventOffsets] ? []).select({ |offset| offset < splitOffset }));
+            if ((region[\regionIdentity] ? "frozen") == "frozen") {
+                leftRegion.put(\eventOffsets, (region[\eventOffsets] ? []).select({ |offset| offset < splitOffset }));
+            };
             leftRegion.put(\replayedEventIndexes, []);
+            leftRegion.put(\lastEditMessage, "split preserved " ++ (region[\regionIdentity] ? "frozen") ++ " identity");
 
             rightRegion.put(\regionId, ~makeRegionId.value);
             rightRegion.put(\displayName, region[\displayName] ++ " B");
             rightRegion.put(\startBeat, (region[\startBeat] ? 0.0) + splitOffset);
             rightRegion.put(\lengthBeats, (region[\lengthBeats] ? 0.0) - splitOffset);
-            rightRegion.put(\eventOffsets, (region[\eventOffsets] ? []).select({ |offset| offset >= splitOffset }).collect({ |offset| offset - splitOffset }));
+            if ((region[\regionIdentity] ? "frozen") == "frozen") {
+                rightRegion.put(\eventOffsets, (region[\eventOffsets] ? []).select({ |offset| offset >= splitOffset }).collect({ |offset| offset - splitOffset }));
+            };
             rightRegion.put(\replayedEventIndexes, []);
+            rightRegion.put(\lastEditMessage, "split preserved " ++ (region[\regionIdentity] ? "frozen") ++ " identity");
 
             ~arrangementRegions = ~arrangementRegions.reject({ |candidate| candidate[\regionId] == regionId });
             ~arrangementRegions = ~arrangementRegions.add(leftRegion).add(rightRegion);
             ~emitArrangementState.value;
+            if (~markProjectDirty.notNil) { ~markProjectDirty.value("region split") };
             ~sendEnvelope.value("event", "regions.edited", (regionId: regionId, edit: "split", leftRegionId: leftRegion[\regionId], rightRegionId: rightRegion[\regionId]), correlationId);
         };
     };
@@ -187,6 +257,7 @@
         ~sendEnvelope.value("error", "regions.error", (message: "Region not found", regionId: regionId), correlationId);
     } {
         ~emitArrangementState.value;
+        if (~markProjectDirty.notNil) { ~markProjectDirty.value("region deleted") };
         ~sendEnvelope.value("event", "regions.deleted", (regionId: regionId), correlationId);
     };
 };
@@ -197,7 +268,11 @@
 
     if (region[\moduleId] == ~kickModuleId and: { ~audioServerReady }) {
         mixerGain = ~effectiveModuleMixerGain.value(~kickModuleId);
-        soundSpec = region[\soundSpec] ? ();
+        soundSpec = if ((region[\regionIdentity] ? "frozen") == "live-linked") {
+            (~moduleRuntimeState[~kickModuleId][\activeSoundSpec] ? ())
+        } {
+            region[\soundSpec] ? ()
+        };
 
         if (mixerGain > 0.0001) {
             Synth(\modDawKickPulse, [

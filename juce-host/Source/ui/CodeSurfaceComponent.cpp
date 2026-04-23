@@ -22,10 +22,12 @@ CodeSurfaceComponent::CodeSurfaceComponent()
     codeEditor.addListener(this);
 
     submitButton.addListener(this);
+    surfaceSelector.addListener(this);
 
     addAndMakeVisible(titleLabel);
     addAndMakeVisible(moduleLabel);
     addAndMakeVisible(statusLabel);
+    addAndMakeVisible(surfaceSelector);
     addAndMakeVisible(submitButton);
     addAndMakeVisible(codeEditor);
 
@@ -35,6 +37,7 @@ CodeSurfaceComponent::CodeSurfaceComponent()
 CodeSurfaceComponent::~CodeSurfaceComponent()
 {
     submitButton.removeListener(this);
+    surfaceSelector.removeListener(this);
     codeEditor.removeListener(this);
 }
 
@@ -54,8 +57,10 @@ void CodeSurfaceComponent::resized()
 {
     auto area = getLocalBounds().reduced(12);
     auto top = area.removeFromTop(24);
-    titleLabel.setBounds(top.removeFromLeft(250));
+    titleLabel.setBounds(top.removeFromLeft(210));
     submitButton.setBounds(top.removeFromRight(160));
+    top.removeFromRight(8);
+    surfaceSelector.setBounds(top.removeFromRight(150));
     area.removeFromTop(6);
     moduleLabel.setBounds(area.removeFromTop(20));
     statusLabel.setBounds(area.removeFromTop(18));
@@ -78,7 +83,24 @@ void CodeSurfaceComponent::buttonClicked(juce::Button* button)
         return;
 
     if (onSubmitPressed)
-        onSubmitPressed(selectedModule.id, codeEditor.getText());
+        onSubmitPressed(selectedModule.id, selectedSurfaceId, codeEditor.getText());
+}
+
+void CodeSurfaceComponent::comboBoxChanged(juce::ComboBox* comboBox)
+{
+    if (comboBox != &surfaceSelector)
+        return;
+
+    const auto text = surfaceSelector.getText();
+    auto nextSurfaceId = text.fromLastOccurrenceOf("[", false, false)
+                            .upToFirstOccurrenceOf("]", false, false)
+                            .trim();
+
+    if (nextSurfaceId.isEmpty())
+        return;
+
+    selectedSurfaceId = nextSurfaceId;
+    refreshFromModuleState(true);
 }
 
 void CodeSurfaceComponent::textEditorTextChanged(juce::TextEditor&)
@@ -92,21 +114,29 @@ void CodeSurfaceComponent::refreshFromModuleState(bool forceReloadEditor)
     if (! hasSelectedModule)
     {
         loadedModuleId.clear();
+        selectedSurfaceId = "pattern";
         loadedEngineCodeSurface.clear();
         editorDirty = false;
         moduleLabel.setText("No module selected", juce::dontSendNotification);
         codeEditor.setText({}, juce::dontSendNotification);
         codeEditor.setReadOnly(true);
         submitButton.setEnabled(false);
+        surfaceSelector.clear(juce::dontSendNotification);
+        surfaceSelector.setEnabled(false);
         updateStatusText();
         return;
     }
 
     const auto moduleChanged = (selectedModule.id != loadedModuleId);
     loadedModuleId = selectedModule.id;
+    if (moduleChanged && selectedModule.findSurfaceById(selectedSurfaceId) == nullptr)
+        selectedSurfaceId = selectedModule.defaultSurface() != nullptr ? selectedModule.defaultSurface()->surfaceId : "pattern";
+
+    refreshSurfaceSelector();
     moduleLabel.setText(selectedModule.displayName + " [" + selectedModule.id + "]", juce::dontSendNotification);
 
-    const auto authoritativeCode = selectedModule.currentEditableCodeSurface();
+    const auto* surface = selectedSurface();
+    const auto authoritativeCode = surface != nullptr ? surface->currentEditableCode() : selectedModule.currentEditableCodeSurface();
     const bool shouldReload = forceReloadEditor
         || (! codeEditor.hasKeyboardFocus(false) && (! editorDirty || codeEditor.getText().isEmpty()));
 
@@ -120,7 +150,41 @@ void CodeSurfaceComponent::refreshFromModuleState(bool forceReloadEditor)
     }
 
     submitButton.setEnabled(true);
+    surfaceSelector.setEnabled(true);
     updateStatusText();
+}
+
+void CodeSurfaceComponent::refreshSurfaceSelector()
+{
+    const auto previousSurfaceId = selectedSurfaceId;
+    surfaceSelector.clear(juce::dontSendNotification);
+
+    int itemId = 1;
+    for (const auto& surface : selectedModule.codeSurfaces)
+    {
+        surfaceSelector.addItem(surface.displayName + " [" + surface.surfaceId + "]", itemId++);
+    }
+
+    if (selectedModule.codeSurfaces.isEmpty())
+        surfaceSelector.addItem("Pattern [pattern]", 1);
+
+    for (int i = 0; i < surfaceSelector.getNumItems(); ++i)
+    {
+        const auto text = surfaceSelector.getItemText(i);
+        const auto itemSurfaceId = text.fromLastOccurrenceOf("[", false, false)
+                                       .upToFirstOccurrenceOf("]", false, false)
+                                       .trim();
+        if (itemSurfaceId == previousSurfaceId)
+        {
+            surfaceSelector.setSelectedItemIndex(i, juce::dontSendNotification);
+            return;
+        }
+    }
+
+    surfaceSelector.setSelectedItemIndex(0, juce::dontSendNotification);
+    selectedSurfaceId = surfaceSelector.getText().fromLastOccurrenceOf("[", false, false)
+                                        .upToFirstOccurrenceOf("]", false, false)
+                                        .trim();
 }
 
 void CodeSurfaceComponent::updateStatusText()
@@ -131,16 +195,28 @@ void CodeSurfaceComponent::updateStatusText()
         return;
     }
 
-    auto status = "state: " + selectedModule.codeSurfaceState;
+    const auto* surface = selectedSurface();
+    auto status = "surface " + selectedSurfaceId + " | state: "
+                + (surface != nullptr ? surface->state : selectedModule.codeSurfaceState);
 
-    if (selectedModule.pendingCodeSwapBarIndex > 0)
-        status += " | pending bar " + juce::String(selectedModule.pendingCodeSwapBarIndex);
+    const auto pendingBar = surface != nullptr ? surface->pendingCodeSwapBarIndex : selectedModule.pendingCodeSwapBarIndex;
+    if (pendingBar > 0)
+        status += " | pending bar " + juce::String(pendingBar);
+
+    if (surface != nullptr)
+        status += " | rev " + juce::String(surface->revision);
 
     if (editorDirty)
         status += " | local edits not yet submitted";
 
-    if (selectedModule.lastCodeEvalMessage.isNotEmpty())
-        status += " | " + selectedModule.lastCodeEvalMessage;
+    const auto diagnostic = surface != nullptr ? surface->diagnostic : selectedModule.lastCodeEvalMessage;
+    if (diagnostic.isNotEmpty())
+        status += " | " + diagnostic;
 
     statusLabel.setText(status, juce::dontSendNotification);
+}
+
+const CodeSurfaceEntry* CodeSurfaceComponent::selectedSurface() const
+{
+    return selectedModule.findSurfaceById(selectedSurfaceId);
 }

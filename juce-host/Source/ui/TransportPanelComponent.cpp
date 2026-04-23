@@ -14,6 +14,13 @@ TransportPanelComponent::TransportPanelComponent()
     addAndMakeVisible(activateNextBarButton);
     addAndMakeVisible(saveProjectButton);
     addAndMakeVisible(loadProjectButton);
+    addAndMakeVisible(sceneNextPhraseButton);
+    addAndMakeVisible(sceneAfterCyclesButton);
+    addAndMakeVisible(sceneExternalCueButton);
+    addAndMakeVisible(externalCueButton);
+    addAndMakeVisible(performanceAccentButton);
+    addAndMakeVisible(performanceCueButton);
+    addAndMakeVisible(performanceLiftButton);
 
     playButton.addListener(this);
     stopButton.addListener(this);
@@ -21,6 +28,13 @@ TransportPanelComponent::TransportPanelComponent()
     activateNextBarButton.addListener(this);
     saveProjectButton.addListener(this);
     loadProjectButton.addListener(this);
+    sceneNextPhraseButton.addListener(this);
+    sceneAfterCyclesButton.addListener(this);
+    sceneExternalCueButton.addListener(this);
+    externalCueButton.addListener(this);
+    performanceAccentButton.addListener(this);
+    performanceCueButton.addListener(this);
+    performanceLiftButton.addListener(this);
 
     setTransportState(state);
 }
@@ -33,12 +47,26 @@ TransportPanelComponent::~TransportPanelComponent()
     activateNextBarButton.removeListener(this);
     saveProjectButton.removeListener(this);
     loadProjectButton.removeListener(this);
+    sceneNextPhraseButton.removeListener(this);
+    sceneAfterCyclesButton.removeListener(this);
+    sceneExternalCueButton.removeListener(this);
+    externalCueButton.removeListener(this);
+    performanceAccentButton.removeListener(this);
+    performanceCueButton.removeListener(this);
+    performanceLiftButton.removeListener(this);
 }
 
 void TransportPanelComponent::setTransportState(const TransportState& newState)
 {
     state = newState;
-    summaryLabel.setText(state.toSummaryString(), juce::dontSendNotification);
+    updateSummaryText();
+    repaint();
+}
+
+void TransportPanelComponent::setRecoveryState(const RecoveryState& newState)
+{
+    recoveryState = newState;
+    updateSummaryText();
     repaint();
 }
 
@@ -65,6 +93,26 @@ void TransportPanelComponent::resized()
     saveProjectButton.setBounds(lowerButtons.removeFromLeft((lowerButtons.getWidth() - 8) / 2));
     lowerButtons.removeFromLeft(8);
     loadProjectButton.setBounds(lowerButtons);
+
+    area.removeFromTop(8);
+    auto sceneRow = area.removeFromTop(28);
+    auto sceneButtonWidth = (sceneRow.getWidth() - 24) / 4;
+    sceneNextPhraseButton.setBounds(sceneRow.removeFromLeft(sceneButtonWidth));
+    sceneRow.removeFromLeft(8);
+    sceneAfterCyclesButton.setBounds(sceneRow.removeFromLeft(sceneButtonWidth));
+    sceneRow.removeFromLeft(8);
+    sceneExternalCueButton.setBounds(sceneRow.removeFromLeft(sceneButtonWidth));
+    sceneRow.removeFromLeft(8);
+    externalCueButton.setBounds(sceneRow);
+
+    area.removeFromTop(8);
+    auto performanceRow = area.removeFromTop(28);
+    auto performanceButtonWidth = (performanceRow.getWidth() - 16) / 3;
+    performanceAccentButton.setBounds(performanceRow.removeFromLeft(performanceButtonWidth));
+    performanceRow.removeFromLeft(8);
+    performanceCueButton.setBounds(performanceRow.removeFromLeft(performanceButtonWidth));
+    performanceRow.removeFromLeft(8);
+    performanceLiftButton.setBounds(performanceRow);
 }
 
 void TransportPanelComponent::paint(juce::Graphics& g)
@@ -111,5 +159,62 @@ void TransportPanelComponent::buttonClicked(juce::Button* button)
     if (button == &loadProjectButton)
     {
         if (onLoadProjectPressed) onLoadProjectPressed();
+        return;
     }
+
+    if (button == &sceneNextPhraseButton)
+    {
+        if (onSceneNextPhrasePressed) onSceneNextPhrasePressed();
+        return;
+    }
+
+    if (button == &sceneAfterCyclesButton)
+    {
+        if (onSceneAfterTwoCyclesPressed) onSceneAfterTwoCyclesPressed();
+        return;
+    }
+
+    if (button == &sceneExternalCueButton)
+    {
+        if (onSceneExternalCuePressed) onSceneExternalCuePressed();
+        return;
+    }
+
+    if (button == &externalCueButton)
+    {
+        if (onExternalCuePressed) onExternalCuePressed();
+        return;
+    }
+
+    if (button == &performanceAccentButton)
+    {
+        if (onPerformanceAccentPressed) onPerformanceAccentPressed();
+        return;
+    }
+
+    if (button == &performanceCueButton)
+    {
+        if (onPerformanceCuePressed) onPerformanceCuePressed();
+        return;
+    }
+
+    if (button == &performanceLiftButton)
+    {
+        if (onPerformanceLiftPressed) onPerformanceLiftPressed();
+    }
+}
+
+void TransportPanelComponent::updateSummaryText()
+{
+    auto summary = state.toSummaryString();
+
+    if (recoveryState.engineOnline)
+    {
+        summary += recoveryState.projectDirty ? " | unsaved autosave active" : " | saved";
+
+        if (! recoveryState.moduleErrors.isEmpty())
+            summary += " | " + juce::String(recoveryState.moduleErrors.size()) + " isolated error";
+    }
+
+    summaryLabel.setText(summary, juce::dontSendNotification);
 }

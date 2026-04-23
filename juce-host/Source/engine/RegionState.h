@@ -8,7 +8,11 @@ struct RegionEntry
     juce::String moduleId;
     juce::String displayName;
     juce::String kind;
+    juce::String regionIdentity;
+    juce::String editPolicy;
     juce::String source;
+    juce::String linkedModuleId;
+    juce::String lastEditMessage;
     double startBeat = 0.0;
     double lengthBeats = 0.0;
 

@@ -20,10 +20,18 @@
 - `M18` multi-surface code model
 - `M19` structural/conductor modules
 - `M20` route graph UI
+- `M21` richer timing relations
+- `M22` phrase-level quantisation and scene boundaries
+- `M23` group / bus architecture
+- `M24` sends / returns and spatial aux logic
+- `M25` better region identity: live-linked vs frozen
+- `M26` external control and performance input
+- `M27` analysis and feedback modules
+- `M28` robust error containment and recovery
 
 ## Current Progress
 
-`M1` through `M17` are implemented in this repository scaffold.
+`M1` through `M28` are implemented in this repository scaffold.
 
 `M13` introduces an engine-owned route list with audio and control route families. JUCE displays routes and requests route creation/deletion, while `sclang` validates endpoints and remains the route authority.
 
@@ -35,4 +43,24 @@
 
 `M17` introduces a minimal automation lane for `Kick Pulse` mixer level. `sclang` owns breakpoint data, interpolation, and playback application; JUCE renders and requests point changes.
 
-`M18` through `M20` are intentionally not implemented yet.
+`M18` introduces multiple code surfaces per module. `sclang` owns surface-specific eval, diagnostics, active revisions, and fallback behavior on failure.
+
+`M19` introduces a hardcoded structural conductor module. `sclang` emits phrase-boundary directives with section, density, sync cue, phrase reset, orchestration, and target-module data; JUCE renders a structural lane and inspector details from engine state.
+
+`M20` introduces a route graph view over the same engine-owned route list model. JUCE renders modules/ports/connections, allows visual create/delete gestures, shows the required route families, and still sends all route mutations through `sclang` validation.
+
+`M21` introduces richer engine-owned timing relations for derived clock domains: `tempoShared`, `meterShared`, `phaseShared`, `phaseOffset`, and `hardSync`. JUCE can request relation changes from the timing inspector, but `sclang` validates and applies or rejects them.
+
+`M22` introduces phrase lengths on clock domains and phrase-level structural scheduling. JUCE can request demo scene transitions for `nextPhrase`, `afterNCycles`, or `externalCue`; `sclang` computes and owns the pending boundary and emits the applied structural directive.
+
+`M23` introduces a minimal group/bus layer. `sclang` owns a demo `Drum Group`, module-to-group assignments, group level/mute, and effective module gain through module strip, group bus, and master.
+
+`M24` introduces a minimal sends/returns layer. `sclang` owns demo send definitions, pre/post send mode, send level, and a shared `Space Return` FX path; JUCE displays and requests changes without owning aux signal flow.
+
+`M25` introduces explicit region identity. Frozen regions are detached material, while live-linked regions are projections of module behaviour; both are engine-owned and have distinct UI rendering and edit policies.
+
+`M26` introduces minimal performance input. JUCE maps keyboard/buttons to explicit performance macros, but sends them to `sclang` as requests; the engine owns kick accents, external scene cues, and density-lift structural directives.
+
+`M27` introduces a minimal analysis/feedback module. `sclang` owns a `Kick Listener` analysis module that derives envelope, onset, density, and brightness proxy data from kick trigger events, emits `analysis.state`, updates module runtime feedback, and exposes an inspectable control route to `Texture Drift`.
+
+`M28` introduces minimal recovery containment. Failed code-surface eval remains isolated to the surface, `sclang` tracks unsaved project state, writes a declarative recovery autosave after project mutations, can rehydrate from that autosave after interruption, and emits `engine.recoveryState` for JUCE to display.

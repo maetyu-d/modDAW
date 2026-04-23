@@ -1,5 +1,6 @@
 (
 ~validationAllowedMeterDenominators = [1, 2, 4, 8, 16, 32, 64];
+~validationAllowedClockRelationTypes = ["global", "tempoShared", "meterShared", "phaseShared", "phaseOffset", "hardSync"];
 
 ~makeValidationFinding = { |severity, ruleId, message|
     (
@@ -96,9 +97,35 @@
 
     clockDefinitions.do { |definition|
         var parentId = definition[\parentId];
+        var relationType = definition[\relationType] ? if ((definition[\kind] ? "") == "global") { "global" } { "tempoShared" };
         if (parentId.notNil and: { clockDefinitionById[parentId].isNil }) {
             ~addValidationFinding.value(findings, "error", "clockdomains.parent-exists",
                 "Clock domain '" ++ definition[\id].asString ++ "' references missing parent '" ++ parentId.asString ++ "'.");
+        };
+
+        if (~validationAllowedClockRelationTypes.detect({ |allowed| allowed.asString == relationType.asString }, { nil }).isNil) {
+            ~addValidationFinding.value(findings, "error", "clockdomains.valid-relation",
+                "Clock domain '" ++ definition[\id].asString ++ "' uses unsupported relation type '" ++ relationType.asString ++ "'.");
+        };
+
+        if ((definition[\kind] == "global") and: { relationType != "global" }) {
+            ~addValidationFinding.value(findings, "error", "clockdomains.global-relation",
+                "Global clock domain must use the global relation type.");
+        };
+
+        if ((definition[\kind] != "global") and: { relationType == "global" }) {
+            ~addValidationFinding.value(findings, "error", "clockdomains.derived-relation",
+                "Derived clock domains cannot use the global relation type.");
+        };
+
+        if (((definition[\phaseOffsetBeats] ? 0.0).asFloat.abs) > 64.0) {
+            ~addValidationFinding.value(findings, "error", "clockdomains.phase-offset-range",
+                "Clock domain '" ++ definition[\id].asString ++ "' phase offset must be between -64 and 64 beats.");
+        };
+
+        if (((definition[\phraseLengthBars] ? 1).asInteger) <= 0) {
+            ~addValidationFinding.value(findings, "error", "clockdomains.phrase-length-positive",
+                "Clock domain '" ++ definition[\id].asString ++ "' phrase length must be at least one bar.");
         };
     };
 

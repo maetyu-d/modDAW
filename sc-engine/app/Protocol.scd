@@ -170,6 +170,9 @@
     { type == "engine.ping" } {
         ~sendEnvelope.value("response", "engine.pong", (state: "alive"), messageId);
     }
+    { type == "engine.recoveryRequestState" } {
+        ~emitRecoveryState.value(messageId);
+    }
     { type == "transport.requestState" } {
         ~emitTransportState.value(messageId);
     }
@@ -182,6 +185,14 @@
     { type == "clockdomains.requestState" } {
         ~emitClockDomainsState.value(messageId);
     }
+    { type == "clockdomains.setRelation" } {
+        ~setClockDomainRelation.value(
+            ~envelopeValueAt.value(payload, "domainId"),
+            ~envelopeValueAt.value(payload, "relationType"),
+            ~envelopeValueAt.value(payload, "phaseOffsetBeats") ? 0.0,
+            messageId
+        );
+    }
     { type == "modules.requestState" } {
         ~emitModulesState.value(messageId);
     }
@@ -191,7 +202,8 @@
     { type == "modules.updateCodeSurfaceNextBar" } {
         ~scheduleModuleCodeSurfaceUpdateNextBar.value(
             ~envelopeValueAt.value(payload, "moduleId"),
-            ~envelopeValueAt.value(payload, "codeSurface")
+            ~envelopeValueAt.value(payload, "codeSurface"),
+            ~envelopeValueAt.value(payload, "surfaceId") ? "pattern"
         );
     }
     { type == "mixer.requestState" } {
@@ -207,6 +219,24 @@
         ~setMixerStripMuted.value(
             ~envelopeValueAt.value(payload, "stripId"),
             ~envelopeValueAt.value(payload, "muted")
+        );
+    }
+    { type == "mixer.assignGroup" } {
+        ~setMixerStripGroup.value(
+            ~envelopeValueAt.value(payload, "stripId"),
+            ~envelopeValueAt.value(payload, "groupId")
+        );
+    }
+    { type == "mixer.setSendLevel" } {
+        ~setMixerSendLevel.value(
+            ~envelopeValueAt.value(payload, "sendId"),
+            ~envelopeValueAt.value(payload, "level")
+        );
+    }
+    { type == "mixer.setSendMode" } {
+        ~setMixerSendMode.value(
+            ~envelopeValueAt.value(payload, "sendId"),
+            ~envelopeValueAt.value(payload, "mode")
         );
     }
     { type == "routes.requestState" } {
@@ -231,6 +261,9 @@
     }
     { type == "regions.freezeModule" } {
         ~freezeModuleToRegion.value(~envelopeValueAt.value(payload, "moduleId"), messageId);
+    }
+    { type == "regions.createLiveLinked" } {
+        ~createLiveLinkedRegion.value(~envelopeValueAt.value(payload, "moduleId"), messageId);
     }
     { type == "regions.move" } {
         ~moveRegion.value(
@@ -264,6 +297,34 @@
     }
     { type == "automation.resetDemo" } {
         ~resetAutomationDemo.value(~envelopeValueAt.value(payload, "laneId"), messageId);
+    }
+    { type == "structural.requestState" } {
+        ~emitStructuralState.value(messageId);
+    }
+    { type == "structural.scheduleSceneTransition" } {
+        ~scheduleSceneTransition.value(
+            ~envelopeValueAt.value(payload, "quantizationTarget") ? "nextPhrase",
+            ~envelopeValueAt.value(payload, "afterCycles") ? 0,
+            ~envelopeValueAt.value(payload, "domainId") ? "global.main",
+            ~envelopeValueAt.value(payload, "sceneName") ? "Scene Change",
+            messageId
+        );
+    }
+    { type == "structural.externalCue" } {
+        ~triggerExternalCue.value(~envelopeValueAt.value(payload, "cueName") ? "manual", messageId);
+    }
+    { type == "performance.requestState" } {
+        ~emitPerformanceState.value(messageId);
+    }
+    { type == "performance.triggerMacro" } {
+        ~triggerPerformanceMacro.value(
+            ~envelopeValueAt.value(payload, "macroId"),
+            ~envelopeValueAt.value(payload, "value") ? 1.0,
+            messageId
+        );
+    }
+    { type == "analysis.requestState" } {
+        ~emitAnalysisState.value(messageId);
     }
     { type == "project.save" } {
         ~saveProject.value(~envelopeValueAt.value(payload, "path"), messageId);

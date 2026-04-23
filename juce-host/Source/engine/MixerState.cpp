@@ -48,10 +48,39 @@ MixerState MixerState::fromPayload(const juce::var& payload)
                 strip.displayName = readString(item, "displayName");
                 strip.kind = readString(item, "kind");
                 strip.targetModuleId = readString(item, "targetModuleId");
+                strip.assignedGroupId = readString(item, "assignedGroupId");
+                strip.childCount = static_cast<int>(readDouble(item, "childCount", 0.0));
                 strip.hasAudioPath = readBool(item, "hasAudioPath", false);
                 strip.level = readDouble(item, "level", 1.0);
                 strip.muted = readBool(item, "muted", false);
                 state.strips.add(strip);
+            }
+        }
+
+        if (auto* groupsArray = dynamicObject->getProperty("groups").getArray())
+        {
+            for (const auto& item : *groupsArray)
+            {
+                MixerGroupEntry group;
+                group.id = readString(item, "id");
+                group.displayName = readString(item, "displayName");
+                state.groups.add(group);
+            }
+        }
+
+        if (auto* sendsArray = dynamicObject->getProperty("sends").getArray())
+        {
+            for (const auto& item : *sendsArray)
+            {
+                MixerSendEntry send;
+                send.sendId = readString(item, "sendId");
+                send.displayName = readString(item, "displayName");
+                send.sourceStripId = readString(item, "sourceStripId");
+                send.targetModuleId = readString(item, "targetModuleId");
+                send.returnStripId = readString(item, "returnStripId");
+                send.mode = readString(item, "mode");
+                send.level = readDouble(item, "level", 0.0);
+                state.sends.add(send);
             }
         }
     }
@@ -61,7 +90,9 @@ MixerState MixerState::fromPayload(const juce::var& payload)
 
 juce::String MixerState::toSummaryString() const
 {
-    return juce::String(strips.size()) + " mixer strips";
+    return juce::String(strips.size()) + " mixer strips, "
+         + juce::String(groups.size()) + " groups, "
+         + juce::String(sends.size()) + " sends";
 }
 
 const MixerStripEntry* MixerState::findById(const juce::String& id) const
@@ -69,6 +100,24 @@ const MixerStripEntry* MixerState::findById(const juce::String& id) const
     for (const auto& strip : strips)
         if (strip.id == id)
             return &strip;
+
+    return nullptr;
+}
+
+const MixerGroupEntry* MixerState::findGroupById(const juce::String& id) const
+{
+    for (const auto& group : groups)
+        if (group.id == id)
+            return &group;
+
+    return nullptr;
+}
+
+const MixerSendEntry* MixerState::findSendForStrip(const juce::String& stripId) const
+{
+    for (const auto& send : sends)
+        if (send.sourceStripId == stripId)
+            return &send;
 
     return nullptr;
 }

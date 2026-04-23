@@ -39,6 +39,8 @@ target_sources(modular_sc_daw PRIVATE
     Source/ui/LogPanelComponent.cpp
     Source/ui/MixerPanelComponent.h
     Source/ui/MixerPanelComponent.cpp
+    Source/ui/RouteGraphPanelComponent.h
+    Source/ui/RouteGraphPanelComponent.cpp
     Source/ui/RouteListPanelComponent.h
     Source/ui/RouteListPanelComponent.cpp
     Source/ui/CodeSurfaceComponent.h
@@ -51,6 +53,8 @@ target_sources(modular_sc_daw PRIVATE
     Source/engine/AutomationState.cpp
     Source/engine/EngineConnection.h
     Source/engine/EngineConnection.cpp
+    Source/engine/AnalysisState.h
+    Source/engine/AnalysisState.cpp
     Source/engine/MessageEnvelope.h
     Source/engine/MessageEnvelope.cpp
     Source/engine/MessageParser.h
@@ -61,8 +65,12 @@ target_sources(modular_sc_daw PRIVATE
     Source/engine/MixerState.cpp
     Source/engine/RouteState.h
     Source/engine/RouteState.cpp
+    Source/engine/StructuralState.h
+    Source/engine/StructuralState.cpp
     Source/engine/RegionState.h
     Source/engine/RegionState.cpp
+    Source/engine/RecoveryState.h
+    Source/engine/RecoveryState.cpp
     Source/engine/ModuleState.h
     Source/engine/ModuleState.cpp
     Source/engine/SubprocessHandle.h

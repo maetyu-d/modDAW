@@ -5,10 +5,11 @@
 
 class CodeSurfaceComponent final : public juce::Component,
                                    private juce::Button::Listener,
+                                   private juce::ComboBox::Listener,
                                    private juce::TextEditor::Listener
 {
 public:
-    using SubmitCallback = std::function<void(const juce::String&, const juce::String&)>;
+    using SubmitCallback = std::function<void(const juce::String&, const juce::String&, const juce::String&)>;
 
     CodeSurfaceComponent();
     ~CodeSurfaceComponent() override;
@@ -21,19 +22,24 @@ public:
 
 private:
     void buttonClicked(juce::Button* button) override;
+    void comboBoxChanged(juce::ComboBox* comboBox) override;
     void textEditorTextChanged(juce::TextEditor&) override;
     void refreshFromModuleState(bool forceReloadEditor);
+    void refreshSurfaceSelector();
     void updateStatusText();
+    const CodeSurfaceEntry* selectedSurface() const;
 
     bool hasSelectedModule = false;
     ModuleEntry selectedModule;
     juce::String loadedModuleId;
+    juce::String selectedSurfaceId { "pattern" };
     juce::String loadedEngineCodeSurface;
     bool editorDirty = false;
 
     juce::Label titleLabel;
     juce::Label moduleLabel;
     juce::Label statusLabel;
+    juce::ComboBox surfaceSelector;
     juce::TextButton submitButton { "Hot-Swap Next Bar" };
     juce::TextEditor codeEditor;
 

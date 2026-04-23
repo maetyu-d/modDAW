@@ -96,3 +96,25 @@ Milestone 15 adds frozen timeline regions owned by `sclang`. JUCE may request a 
 Milestone 16 adds basic arrangement editing for frozen regions. JUCE may request move, trim, split, and delete operations, but `sclang` applies snapped edits to canonical region state and emits the updated arrangement. Editing frozen/projected material does not mutate module clock-domain attachments or timing semantics.
 
 Milestone 17 adds breakpoint automation owned by `sclang`. JUCE may render automation lanes and request point changes, but breakpoint placement, interpolation, and parameter application during playback are engine-authored. The first target is the `Kick Pulse` mixer level.
+
+Milestone 18 adds multiple code surfaces per module. JUCE may choose and edit a surface, but `sclang` owns surface identity, pending eval, active revisions, diagnostics, and fallback. A failed surface eval is contained to that surface and does not replace the previous working revision.
+
+Milestone 19 adds structural/conductor modules owned by `sclang`. A conductor may emit phrase-level directives such as section, density, sync cue, phrase reset, orchestration, and target modules. JUCE renders those directives as a structural lane and inspector text, but the conductor timing and its influence on module behaviour remain engine-authored.
+
+Milestone 20 adds a route graph UI. The graph is another view/controller over the same `sclang` route model introduced in M13: JUCE may draw nodes, ports, and connection gestures, but route creation, deletion, identity, endpoint compatibility, enabled state, and route list/graph consistency remain engine-authored.
+
+Milestone 21 adds richer clock-domain relation types. JUCE may request a relation change from the timing inspector, but `sclang` validates the requested relation, updates canonical clock-domain definitions, and emits the resulting timing state. Invalid relation types, global-domain edits, and out-of-range phase offsets are rejected by the engine.
+
+Milestone 22 adds phrase-level boundaries. Clock domains expose engine-owned phrase lengths and phrase phase. JUCE may request structural scene transitions for `nextPhrase`, `afterNCycles`, or `externalCue`, but `sclang` computes pending boundary beats and applies the transition when canonical transport reaches the boundary or cue.
+
+Milestone 23 adds group/bus mixing. JUCE may display mixer hierarchy and request module-to-group assignment, group level, or group mute changes, but `sclang` owns the bus assignment model and applies group gain in the module audio path before master gain.
+
+Milestone 24 adds sends and returns. JUCE may display send level and pre/post mode controls, but `sclang` owns send definitions, return strip state, and how aux gain is derived from module, group, return, and master state. The first shared FX path is SC-native and intentionally simple.
+
+Milestone 25 adds explicit timeline material identity. `sclang` distinguishes frozen detached regions from live-linked module projections. JUCE may request creation and edits, but the engine preserves each region's identity and edit policy so projected arrangement edits do not silently rewrite module behaviour or clock semantics.
+
+Milestone 26 adds external/performance input through host keyboard mappings. JUCE captures simple input gestures and sends typed performance macro requests, while `sclang` owns the mapping results, including immediate module accents, external cue release, and structural density directives.
+
+Milestone 27 adds analysis and feedback modules. `sclang` owns the analysis module lifecycle, feature extraction, derived control values, downstream module influence, and emitted `analysis.state`; JUCE displays the analysis route and latest values without becoming the source of truth for adaptive behaviour.
+
+Milestone 28 adds error containment and recovery. Code-surface failures stay attached to the affected module surface and preserve the previous working revision. `sclang` owns dirty-state tracking and declarative recovery autosaves; JUCE displays recovery status and may request recovery state, but it does not reconstruct musical state from host-owned data.

@@ -32,7 +32,9 @@ juce::String ClockDomainEntry::toSummaryString() const
     auto parentText = parentId.isNotEmpty() ? parentId : "none";
     return displayName + " | " + kind
         + " | parent " + parentText
+        + " | relation " + (relationType.isNotEmpty() ? relationType : "tempoShared")
         + " | ratio " + juce::String(ratioToParent, 3)
+        + " | phrase " + juce::String(phraseLengthBars) + " bars"
         + " | beat " + juce::String(localBeatPosition, 2);
 }
 
@@ -61,8 +63,15 @@ ClockDomainState ClockDomainState::fromPayload(const juce::var& payload)
         entry.parentId = readString(values, "parentId");
         entry.kind = readString(values, "kind");
         entry.displayName = readString(values, "displayName");
+        entry.relationType = readString(values, "relationType");
+        entry.relationDescription = readString(values, "relationDescription");
         entry.ratioToParent = readDouble(values, "ratioToParent", entry.ratioToParent);
         entry.phaseOffsetBeats = readDouble(values, "phaseOffsetBeats", entry.phaseOffsetBeats);
+        entry.phraseLengthBars = readInt(values, "phraseLengthBars", entry.phraseLengthBars);
+        entry.phraseLengthBeats = readDouble(values, "phraseLengthBeats", entry.phraseLengthBeats);
+        entry.phraseIndex = readInt(values, "phraseIndex", entry.phraseIndex);
+        entry.phrasePhase = readDouble(values, "phrasePhase", entry.phrasePhase);
+        entry.nextPhraseBeat = readDouble(values, "nextPhraseBeat", entry.nextPhraseBeat);
         entry.localBeatPosition = readDouble(values, "localBeatPosition", entry.localBeatPosition);
         entry.localBarIndex = readInt(values, "localBarIndex", entry.localBarIndex);
         entry.localBeatInBar = readDouble(values, "localBeatInBar", entry.localBeatInBar);

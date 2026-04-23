@@ -22,11 +22,39 @@
         enabled: true
     ),
     (
+        routeId: "route.audio.drums.to.master",
+        family: "audio",
+        source: "group.drums.audio.out",
+        destination: "master.main.audio.in",
+        enabled: true
+    ),
+    (
+        routeId: "route.audio.kick.to-space-return",
+        family: "audio",
+        source: "module.kick.audio.out",
+        destination: "return.reverb.audio.in",
+        enabled: true
+    ),
+    (
+        routeId: "route.audio.space-return.to-master",
+        family: "audio",
+        source: "return.reverb.audio.out",
+        destination: "master.main.audio.in",
+        enabled: true
+    ),
+    (
         routeId: "route.control.texture.to.kick",
         family: "control",
         source: "module.texture.control.out",
         destination: "module.kick.control.in",
         enabled: false
+    ),
+    (
+        routeId: "route.control.analysis.to.texture",
+        family: "control",
+        source: "module.analysis.kick.control.out",
+        destination: "module.texture.control.in",
+        enabled: true
     )
 ];
 
@@ -40,10 +68,24 @@
     (id: "strip.module.kick.audio.in", displayName: "Kick Strip Audio In", family: "audio", direction: "input", ownerId: "strip.module.kick"),
     (id: "strip.module.hat.audio.in", displayName: "Hat Strip Audio In", family: "audio", direction: "input", ownerId: "strip.module.hat"),
     (id: "strip.module.texture.audio.in", displayName: "Texture Strip Audio In", family: "audio", direction: "input", ownerId: "strip.module.texture"),
+    (id: "group.drums.audio.in", displayName: "Drum Group Audio In", family: "audio", direction: "input", ownerId: "group.drums"),
+    (id: "group.drums.audio.out", displayName: "Drum Group Audio Out", family: "audio", direction: "output", ownerId: "group.drums"),
+    (id: "return.reverb.audio.in", displayName: "Space Return Audio In", family: "audio", direction: "input", ownerId: "return.reverb"),
+    (id: "return.reverb.audio.out", displayName: "Space Return Audio Out", family: "audio", direction: "output", ownerId: "return.reverb"),
     (id: "master.main.audio.in", displayName: "Master Audio In", family: "audio", direction: "input", ownerId: "master.main"),
     (id: "module.texture.control.out", displayName: "Texture Control Out", family: "control", direction: "output", ownerId: "module.texture"),
+    (id: "module.analysis.kick.control.out", displayName: "Kick Listener Analysis Out", family: "control", direction: "output", ownerId: "module.analysis.kick"),
     (id: "module.kick.control.in", displayName: "Kick Control In", family: "control", direction: "input", ownerId: "module.kick"),
-    (id: "module.hat.control.in", displayName: "Hat Control In", family: "control", direction: "input", ownerId: "module.hat")
+    (id: "module.hat.control.in", displayName: "Hat Control In", family: "control", direction: "input", ownerId: "module.hat"),
+    (id: "module.texture.control.in", displayName: "Texture Control In", family: "control", direction: "input", ownerId: "module.texture"),
+    (id: "module.kick.event.out", displayName: "Kick Event Out", family: "event", direction: "output", ownerId: "module.kick"),
+    (id: "module.texture.event.in", displayName: "Texture Event In", family: "event", direction: "input", ownerId: "module.texture"),
+    (id: "module.conductor.structural.out", displayName: "Conductor Structural Out", family: "structural", direction: "output", ownerId: "module.conductor"),
+    (id: "module.kick.structural.in", displayName: "Kick Structural In", family: "structural", direction: "input", ownerId: "module.kick"),
+    (id: "module.hat.structural.in", displayName: "Hat Structural In", family: "structural", direction: "input", ownerId: "module.hat"),
+    (id: "module.texture.structural.in", displayName: "Texture Structural In", family: "structural", direction: "input", ownerId: "module.texture"),
+    (id: "global.main.sync.out", displayName: "Global Sync Out", family: "sync", direction: "output", ownerId: "global.main"),
+    (id: "module.conductor.sync.in", displayName: "Conductor Sync In", family: "sync", direction: "input", ownerId: "module.conductor")
 ];
 
 ~routeEndpointById = { |endpointId|
@@ -151,6 +193,7 @@
 
         ~routeDefinitions = ~routeDefinitions.add(route);
         ~emitRoutesState.value;
+        if (~markProjectDirty.notNil) { ~markProjectDirty.value("route created") };
     };
 };
 
@@ -164,6 +207,7 @@
         ~sendEnvelope.value("error", "routes.error", (message: "Route not found", routeId: routeId));
     } {
         ~emitRoutesState.value;
+        if (~markProjectDirty.notNil) { ~markProjectDirty.value("route deleted") };
     };
 };
 

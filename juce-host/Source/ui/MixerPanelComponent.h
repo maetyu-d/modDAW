@@ -5,7 +5,8 @@
 
 class MixerPanelComponent final : public juce::Component,
                                   private juce::Slider::Listener,
-                                  private juce::Button::Listener
+                                  private juce::Button::Listener,
+                                  private juce::ComboBox::Listener
 {
 public:
     MixerPanelComponent();
@@ -15,6 +16,9 @@ public:
 
     std::function<void(const juce::String&, double)> onStripLevelChanged;
     std::function<void(const juce::String&, bool)> onStripMuteChanged;
+    std::function<void(const juce::String&, const juce::String&)> onStripGroupChanged;
+    std::function<void(const juce::String&, double)> onSendLevelChanged;
+    std::function<void(const juce::String&, const juce::String&)> onSendModeChanged;
 
     void resized() override;
     void paint(juce::Graphics& g) override;
@@ -23,17 +27,24 @@ private:
     struct StripControls
     {
         juce::String stripId;
+        juce::String sendId;
         juce::Label nameLabel;
         juce::Slider levelSlider;
         juce::ToggleButton muteToggle;
+        juce::ComboBox groupSelector;
+        juce::Slider sendSlider;
+        juce::ComboBox sendModeSelector;
         juce::Label statusLabel;
     };
 
     void sliderValueChanged(juce::Slider* slider) override;
     void buttonClicked(juce::Button* button) override;
+    void comboBoxChanged(juce::ComboBox* comboBox) override;
     void rebuildControls();
     StripControls* findControlsForSlider(juce::Slider* slider);
     StripControls* findControlsForButton(juce::Button* button);
+    StripControls* findControlsForComboBox(juce::ComboBox* comboBox);
+    StripControls* findControlsForSendSlider(juce::Slider* slider);
 
     juce::Label titleLabel;
     juce::Label summaryLabel;
