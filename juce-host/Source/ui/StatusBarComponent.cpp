@@ -31,10 +31,11 @@ StatusBarComponent::StatusBarComponent()
 {
     titleLabel.setText("Engine Status", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
+    titleLabel.setFont(juce::FontOptions(13.0f));
     addAndMakeVisible(titleLabel);
 
     valueLabel.setJustificationType(juce::Justification::centredLeft);
-    valueLabel.setFont(juce::FontOptions(16.0f, juce::Font::bold));
+    valueLabel.setFont(juce::FontOptions(15.0f, juce::Font::bold));
     addAndMakeVisible(valueLabel);
 
     setConnectionState(EngineProcessManager::ConnectionState::offline);
@@ -48,7 +49,7 @@ void StatusBarComponent::setConnectionState(EngineProcessManager::ConnectionStat
 
 void StatusBarComponent::resized()
 {
-    auto area = getLocalBounds().reduced(12, 8);
-    titleLabel.setBounds(area.removeFromLeft(140));
-    valueLabel.setBounds(area.removeFromLeft(160));
+    auto area = getLocalBounds().reduced(8, 6);
+    titleLabel.setBounds(area.removeFromLeft(120));
+    valueLabel.setBounds(area.removeFromLeft(120));
 }

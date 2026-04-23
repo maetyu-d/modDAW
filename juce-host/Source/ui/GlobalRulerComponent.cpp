@@ -3,7 +3,7 @@
 namespace
 {
 constexpr double visibleBars = 4.0;
-constexpr float headerHeight = 24.0f;
+constexpr float headerHeight = 22.0f;
 constexpr float tickLabelInset = 6.0f;
 }
 
@@ -49,11 +49,11 @@ void GlobalRulerComponent::paint(juce::Graphics& g)
     g.drawRoundedRectangle(bounds.reduced(0.5f), 8.0f, 1.0f);
 
     g.setColour(juce::Colour(0xfff3f5f7));
-    g.setFont(juce::FontOptions(15.0f, juce::Font::bold));
+    g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
     g.drawText("Global Ruler", header.toNearestInt(), juce::Justification::centredLeft);
 
     g.setColour(juce::Colour(0xff8f99a5));
-    g.setFont(juce::FontOptions(13.0f));
+    g.setFont(juce::FontOptions(12.0f));
     g.drawText("Rendered from sclang transport only", header.removeFromRight(240).toNearestInt(), juce::Justification::centredRight);
 
     g.setColour(juce::Colour(0xff101419));
@@ -67,7 +67,7 @@ void GlobalRulerComponent::paint(juce::Graphics& g)
     const int firstBar = static_cast<int>(std::floor(startBeat / beatsPerBar)) + 1;
     const int lastBar = static_cast<int>(std::ceil(endBeat / beatsPerBar)) + 1;
 
-    auto overlayArea = rulerArea.removeFromBottom(38.0f);
+    auto overlayArea = rulerArea.removeFromBottom(34.0f);
 
     if (hasSelectedOverlay && overlayClockDomain.ratioToParent > 0.0)
     {
@@ -107,16 +107,16 @@ void GlobalRulerComponent::paint(juce::Graphics& g)
         }
 
         g.setColour(juce::Colour(0xff8f99a5));
-        g.setFont(juce::FontOptions(12.0f));
-        g.drawText("Selected Lane Overlay: " + overlayModule.displayName + " @ " + overlayClockDomain.displayName,
+        g.setFont(juce::FontOptions(11.5f));
+        g.drawText("Overlay: " + overlayModule.displayName + " @ " + overlayClockDomain.displayName,
                    juce::Rectangle<float>(overlayArea.getX() + 8.0f, overlayArea.getY() + 2.0f, overlayArea.getWidth() - 16.0f, 14.0f).toNearestInt(),
                    juce::Justification::centredLeft);
     }
     else
     {
         g.setColour(juce::Colour(0xff8f99a5));
-        g.setFont(juce::FontOptions(12.0f));
-        g.drawText("Selected Lane Overlay: none", overlayArea.toNearestInt(), juce::Justification::centredLeft);
+        g.setFont(juce::FontOptions(11.5f));
+        g.drawText("Overlay: none", overlayArea.toNearestInt(), juce::Justification::centredLeft);
     }
 
     g.setFont(juce::FontOptions(12.0f));

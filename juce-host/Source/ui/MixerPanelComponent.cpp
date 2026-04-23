@@ -22,6 +22,33 @@ MixerPanelComponent::~MixerPanelComponent()
 
 void MixerPanelComponent::setMixerState(const MixerState& newState)
 {
+    if (state.strips.size() == newState.strips.size())
+    {
+        bool sameStructure = true;
+
+        for (int i = 0; i < state.strips.size(); ++i)
+            sameStructure = sameStructure && (state.strips[i].id == newState.strips[i].id);
+
+        if (sameStructure)
+        {
+            suppressCallbacks = true;
+            state = newState;
+            summaryLabel.setText(state.toSummaryString(), juce::dontSendNotification);
+
+            for (int i = 0; i < strips.size(); ++i)
+            {
+                const auto& stripState = state.strips[i];
+                auto* strip = strips[i];
+                strip->levelSlider.setValue(stripState.level, juce::dontSendNotification);
+                strip->muteToggle.setToggleState(stripState.muted, juce::dontSendNotification);
+            }
+
+            suppressCallbacks = false;
+            repaint();
+            return;
+        }
+    }
+
     state = newState;
     rebuildControls();
     repaint();

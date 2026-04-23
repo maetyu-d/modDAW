@@ -4,9 +4,12 @@ CodeSurfaceComponent::CodeSurfaceComponent()
 {
     titleLabel.setText("Code Surface (sclang authority)", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
+    titleLabel.setFont(juce::FontOptions(14.0f, juce::Font::bold));
 
     moduleLabel.setJustificationType(juce::Justification::centredLeft);
+    moduleLabel.setFont(juce::FontOptions(13.5f, juce::Font::bold));
     statusLabel.setJustificationType(juce::Justification::centredLeft);
+    statusLabel.setFont(juce::FontOptions(12.5f));
 
     codeEditor.setMultiLine(true);
     codeEditor.setReturnKeyStartsNewLine(true);
@@ -14,7 +17,8 @@ CodeSurfaceComponent::CodeSurfaceComponent()
     codeEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xff101419));
     codeEditor.setColour(juce::TextEditor::textColourId, juce::Colour(0xffd7e2ef));
     codeEditor.setColour(juce::TextEditor::highlightColourId, juce::Colour(0xff264a64));
-    codeEditor.setFont(juce::FontOptions(13.0f));
+    codeEditor.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xff38424e));
+    codeEditor.setFont(juce::FontOptions(12.5f));
     codeEditor.addListener(this);
 
     submitButton.addListener(this);
@@ -52,10 +56,10 @@ void CodeSurfaceComponent::resized()
     auto top = area.removeFromTop(24);
     titleLabel.setBounds(top.removeFromLeft(250));
     submitButton.setBounds(top.removeFromRight(160));
-    area.removeFromTop(4);
-    moduleLabel.setBounds(area.removeFromTop(22));
-    statusLabel.setBounds(area.removeFromTop(20));
-    area.removeFromTop(8);
+    area.removeFromTop(6);
+    moduleLabel.setBounds(area.removeFromTop(20));
+    statusLabel.setBounds(area.removeFromTop(18));
+    area.removeFromTop(6);
     codeEditor.setBounds(area);
 }
 
