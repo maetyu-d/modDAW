@@ -122,3 +122,14 @@ Milestone 28 adds error containment and recovery. Code-surface failures stay att
 Milestone 29 adds offline render and stem export requests. JUCE may ask for a full mix or stems, but `sclang` owns render range interpretation, event reconstruction, mixer/stem state, and artifact writing. The first export format is a deterministic render package rather than a waveform, so it remains debuggable while preserving engine timing authority.
 
 Milestone 30 adds workflow modes in JUCE for arrangement, mixer, graph, and code work. These modes only reorganize existing engine-owned views and shortcuts; they do not create a host-side project model or host-authored musical timing.
+
+## Runtime Notes
+
+The current stable runtime favors minimal host work over dense live mirroring:
+
+- JUCE updates only changed engine state
+- playback-time logging is filtered
+- high-frequency engine playback emissions are throttled
+- transport stop returns the prototype to a clean bar-1 restart point
+
+These limits are implementation choices for prototype stability, not a transfer of timing authority to the host.

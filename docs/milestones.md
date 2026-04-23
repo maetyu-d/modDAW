@@ -35,6 +35,12 @@
 
 `M1` through `M30` are implemented in this repository scaffold.
 
+Current stable runtime note:
+
+- repeated play/activate-next-bar/stop cycles are stabilized with engine-side throttling and minimal host redraw
+- startup is cold and deterministic
+- the host remains a renderer/requester rather than a live high-frequency mirror of engine internals
+
 `M13` introduces an engine-owned route list with audio and control route families. JUCE displays routes and requests route creation/deletion, while `sclang` validates endpoints and remains the route authority.
 
 `M14` introduces a minimal persistent project snapshot. JUCE can request save/load, but `sclang` serializes declarative project data and reconstructs runtime state from that snapshot.

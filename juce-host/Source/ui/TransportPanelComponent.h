@@ -48,18 +48,18 @@ private:
     juce::TextButton playButton { "Play" };
     juce::TextButton stopButton { "Stop" };
     juce::TextButton refreshButton { "Refresh" };
-    juce::TextButton activateNextBarButton { "Activate On Next Bar" };
-    juce::TextButton saveProjectButton { "Save Project" };
-    juce::TextButton loadProjectButton { "Load Project" };
-    juce::TextButton sceneNextPhraseButton { "Scene Next Phrase" };
+    juce::TextButton activateNextBarButton { "Next Bar" };
+    juce::TextButton saveProjectButton { "Save" };
+    juce::TextButton loadProjectButton { "Load" };
+    juce::TextButton sceneNextPhraseButton { "Scene Phrase" };
     juce::TextButton sceneAfterCyclesButton { "Scene +2 Cycles" };
     juce::TextButton sceneExternalCueButton { "Wait External Cue" };
     juce::TextButton externalCueButton { "Send Cue" };
     juce::TextButton performanceAccentButton { "Accent [1]" };
     juce::TextButton performanceCueButton { "Cue [2]" };
     juce::TextButton performanceLiftButton { "Lift [3]" };
-    juce::TextButton renderMixButton { "Render Mix" };
-    juce::TextButton renderStemsButton { "Export Stems" };
+    juce::TextButton renderMixButton { "Render" };
+    juce::TextButton renderStemsButton { "Stems" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TransportPanelComponent)
 };

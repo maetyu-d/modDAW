@@ -241,14 +241,14 @@ void TransportPanelComponent::updateSummaryText()
 
     if (recoveryState.engineOnline)
     {
-        summary += recoveryState.projectDirty ? " | unsaved autosave active" : " | saved";
+        summary += recoveryState.projectDirty ? " | dirty" : " | saved";
 
         if (! recoveryState.moduleErrors.isEmpty())
-            summary += " | " + juce::String(recoveryState.moduleErrors.size()) + " isolated error";
+            summary += " | " + juce::String(recoveryState.moduleErrors.size()) + " error";
     }
 
     if (renderState.status == "complete" && ! renderState.artifacts.isEmpty())
-        summary += " | render " + juce::String(renderState.artifacts.size()) + " files";
+        summary += " | " + juce::String(renderState.artifacts.size()) + " render files";
 
     summaryLabel.setText(summary, juce::dontSendNotification);
 }

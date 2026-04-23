@@ -55,7 +55,7 @@ void GlobalRulerComponent::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff8f99a5));
     g.setFont(juce::FontOptions(12.0f));
-    g.drawText("Minimal ruler isolation mode", header.removeFromRight(220).toNearestInt(), juce::Justification::centredRight);
+    g.drawText("Engine-authored timing", header.removeFromRight(220).toNearestInt(), juce::Justification::centredRight);
 
     g.setColour(juce::Colour(0xff101419));
     g.fillRoundedRectangle(rulerArea, 6.0f);
