@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "AutomationPanelComponent.h"
 #include "ClockDomainsPanelComponent.h"
 #include "CodeSurfaceComponent.h"
 #include "GlobalRulerComponent.h"
@@ -8,6 +9,7 @@
 #include "LogPanelComponent.h"
 #include "MixerPanelComponent.h"
 #include "ModuleLanesComponent.h"
+#include "RouteListPanelComponent.h"
 #include "TimingInspectorComponent.h"
 #include "TransportPanelComponent.h"
 #include "ValidationPanelComponent.h"
@@ -32,6 +34,8 @@ private:
     ModuleLanesComponent moduleLanes;
     CodeSurfaceComponent codeSurface;
     MixerPanelComponent mixerPanel;
+    AutomationPanelComponent automationPanel;
+    RouteListPanelComponent routeListPanel;
     TransportPanelComponent transportPanel;
     TimingInspectorComponent timingInspector;
     ValidationPanelComponent validationPanel;

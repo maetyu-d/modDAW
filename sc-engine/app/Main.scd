@@ -2,6 +2,7 @@
 var root;
 
 root = PathName(thisProcess.nowExecutingPath).pathOnly;
+~engineRoot = root +/+ "..";
 
 (root +/+ "Protocol.scd").load;
 (root +/+ "EngineState.scd").load;
@@ -10,6 +11,10 @@ root = PathName(thisProcess.nowExecutingPath).pathOnly;
 (root +/+ "DemoModules.scd").load;
 (root +/+ "Validation.scd").load;
 (root +/+ "Mixer.scd").load;
+(root +/+ "Routes.scd").load;
+(root +/+ "Arrangement.scd").load;
+(root +/+ "Automation.scd").load;
+(root +/+ "ProjectState.scd").load;
 
 ~engineState[\bootTime] = Date.getDate.stamp;
 ~engineState[\transport] = ~transportState;
@@ -17,8 +22,13 @@ root = PathName(thisProcess.nowExecutingPath).pathOnly;
 ~engineState[\modules] = ~demoModules;
 ~engineState[\validation] = ~validateEngineState.value;
 ~engineState[\mixer] = ~mixerState;
+~engineState[\routes] = ~routeState;
+~engineState[\regions] = ~arrangementRegions;
+~engineState[\automation] = ~automationLanes;
 ~startSocketLoop.value;
 ~startModuleActionLoop.value;
+~startArrangementPlaybackLoop.value;
+~startAutomationPlaybackLoop.value;
 ~bootAudioEngine.value;
 ~startTransportBroadcastLoop.value;
 )

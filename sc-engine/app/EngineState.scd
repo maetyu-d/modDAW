@@ -6,6 +6,9 @@
     clockDomains: (),
     modules: [],
     validation: (),
-    mixer: ()
+    mixer: (),
+    routes: [],
+    regions: [],
+    automation: []
 );
 )

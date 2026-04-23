@@ -5,21 +5,22 @@ TransportPanelComponent::TransportPanelComponent()
     titleLabel.setText("Canonical Transport (sclang)", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     summaryLabel.setJustificationType(juce::Justification::centredLeft);
-    hintLabel.setText("Engine-owned transport and quantised trigger requests.", juce::dontSendNotification);
-    hintLabel.setJustificationType(juce::Justification::centredLeft);
 
     addAndMakeVisible(titleLabel);
     addAndMakeVisible(summaryLabel);
-    addAndMakeVisible(hintLabel);
     addAndMakeVisible(playButton);
     addAndMakeVisible(stopButton);
     addAndMakeVisible(refreshButton);
     addAndMakeVisible(activateNextBarButton);
+    addAndMakeVisible(saveProjectButton);
+    addAndMakeVisible(loadProjectButton);
 
     playButton.addListener(this);
     stopButton.addListener(this);
     refreshButton.addListener(this);
     activateNextBarButton.addListener(this);
+    saveProjectButton.addListener(this);
+    loadProjectButton.addListener(this);
 
     setTransportState(state);
 }
@@ -30,6 +31,8 @@ TransportPanelComponent::~TransportPanelComponent()
     stopButton.removeListener(this);
     refreshButton.removeListener(this);
     activateNextBarButton.removeListener(this);
+    saveProjectButton.removeListener(this);
+    loadProjectButton.removeListener(this);
 }
 
 void TransportPanelComponent::setTransportState(const TransportState& newState)
@@ -45,9 +48,7 @@ void TransportPanelComponent::resized()
     titleLabel.setBounds(area.removeFromTop(24));
     area.removeFromTop(4);
     summaryLabel.setBounds(area.removeFromTop(24));
-    area.removeFromTop(2);
-    hintLabel.setBounds(area.removeFromTop(18));
-    area.removeFromTop(10);
+    area.removeFromTop(12);
 
     auto topButtons = area.removeFromTop(30);
     auto buttonWidth = (topButtons.getWidth() - 16) / 3;
@@ -58,7 +59,12 @@ void TransportPanelComponent::resized()
     refreshButton.setBounds(topButtons);
 
     area.removeFromTop(8);
-    activateNextBarButton.setBounds(area.removeFromTop(30));
+    auto lowerButtons = area.removeFromTop(30);
+    activateNextBarButton.setBounds(lowerButtons.removeFromLeft(juce::roundToInt(static_cast<float>(lowerButtons.getWidth()) * 0.50f)));
+    lowerButtons.removeFromLeft(8);
+    saveProjectButton.setBounds(lowerButtons.removeFromLeft((lowerButtons.getWidth() - 8) / 2));
+    lowerButtons.removeFromLeft(8);
+    loadProjectButton.setBounds(lowerButtons);
 }
 
 void TransportPanelComponent::paint(juce::Graphics& g)
@@ -93,5 +99,17 @@ void TransportPanelComponent::buttonClicked(juce::Button* button)
     if (button == &activateNextBarButton)
     {
         if (onActivateNextBarPressed) onActivateNextBarPressed();
+        return;
+    }
+
+    if (button == &saveProjectButton)
+    {
+        if (onSaveProjectPressed) onSaveProjectPressed();
+        return;
+    }
+
+    if (button == &loadProjectButton)
+    {
+        if (onLoadProjectPressed) onLoadProjectPressed();
     }
 }

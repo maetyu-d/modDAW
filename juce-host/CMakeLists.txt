@@ -29,6 +29,8 @@ target_sources(modular_sc_daw PRIVATE
     Source/MainWindow.cpp
     Source/ui/MainComponent.h
     Source/ui/MainComponent.cpp
+    Source/ui/AutomationPanelComponent.h
+    Source/ui/AutomationPanelComponent.cpp
     Source/ui/GlobalRulerComponent.h
     Source/ui/GlobalRulerComponent.cpp
     Source/ui/StatusBarComponent.h
@@ -37,12 +39,16 @@ target_sources(modular_sc_daw PRIVATE
     Source/ui/LogPanelComponent.cpp
     Source/ui/MixerPanelComponent.h
     Source/ui/MixerPanelComponent.cpp
+    Source/ui/RouteListPanelComponent.h
+    Source/ui/RouteListPanelComponent.cpp
     Source/ui/CodeSurfaceComponent.h
     Source/ui/CodeSurfaceComponent.cpp
     Source/ui/TimingInspectorComponent.h
     Source/ui/TimingInspectorComponent.cpp
     Source/engine/EngineProcessManager.h
     Source/engine/EngineProcessManager.cpp
+    Source/engine/AutomationState.h
+    Source/engine/AutomationState.cpp
     Source/engine/EngineConnection.h
     Source/engine/EngineConnection.cpp
     Source/engine/MessageEnvelope.h
@@ -53,6 +59,10 @@ target_sources(modular_sc_daw PRIVATE
     Source/engine/ClockDomainState.cpp
     Source/engine/MixerState.h
     Source/engine/MixerState.cpp
+    Source/engine/RouteState.h
+    Source/engine/RouteState.cpp
+    Source/engine/RegionState.h
+    Source/engine/RegionState.cpp
     Source/engine/ModuleState.h
     Source/engine/ModuleState.cpp
     Source/engine/SubprocessHandle.h

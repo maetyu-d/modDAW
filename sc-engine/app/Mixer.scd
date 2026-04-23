@@ -121,7 +121,7 @@
     if (runtime.isNil) {
         ~sendEnvelope.value("error", "mixer.error", (message: "Unknown mixer strip", stripId: stripId));
     } {
-        runtime.put(\muted, muted.booleanValue);
+        runtime.put(\muted, ~coerceBoolean.value(muted, false));
         ~emitMixerState.value;
     };
 };
@@ -140,13 +140,23 @@
 };
 
 ~effectiveModuleMixerGain = { |moduleId|
-    var definition;
+    var route;
+    var stripId;
     var runtime;
     var moduleGain;
 
     ~ensureMixerRuntimeDefaults.value;
-    definition = ~mixerDefinitionForModuleId.value(moduleId);
-    runtime = if (definition.notNil) { ~mixerRuntimeState[definition[\id]] } { nil };
+
+    if (~enabledAudioRouteForModule.notNil) {
+        route = ~enabledAudioRouteForModule.value(moduleId);
+        stripId = if (route.notNil) { ~mixerStripIdForAudioDestination.value(route[\destination]) } { nil };
+    } {
+        var definition;
+        definition = ~mixerDefinitionForModuleId.value(moduleId);
+        stripId = if (definition.notNil) { definition[\id] } { nil };
+    };
+
+    runtime = if (stripId.notNil) { ~mixerRuntimeState[stripId] } { nil };
     moduleGain = if (runtime.isNil or: { runtime[\muted] == true }) { 0.0 } { runtime[\level] ? 1.0 };
 
     moduleGain * ~masterMixerGain.value

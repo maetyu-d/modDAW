@@ -86,3 +86,13 @@ Milestone 10 adds a timing inspector in JUCE. The host may display timing relati
 Milestone 11 adds minimal validation in `sclang`. The engine is responsible for deciding whether the current transport, clock-domain graph, and module references satisfy the prototype rules. JUCE may display findings, but it does not become the authority for those validation results.
 
 Milestone 12 adds a minimal mixer owned by `sclang`. JUCE may display strips and request gain or mute changes, but the engine remains the source of truth for mixer state and for how those levels affect module sound output.
+
+Milestone 13 adds explicit routing owned by `sclang`. JUCE may render the route list and request create/delete operations, but endpoint validation, route identity, enabled state, and route effects are authored by the engine. The current UI is a list rather than a graph; graph editing is intentionally deferred to `M20`.
+
+Milestone 14 adds persistent project state owned by `sclang`. JUCE may request save/load, but the engine serializes declarative project state and reconstructs runtime state from the saved project. Raw `scsynth` node/server runtime is not persisted as canonical truth.
+
+Milestone 15 adds frozen timeline regions owned by `sclang`. JUCE may request a module freeze and render returned region blocks, but region identity, anchoring, duration, replay material, and playback scheduling are engine-authored. The first implementation stores frozen demo material as declarative event offsets and sound parameters rather than waveform files.
+
+Milestone 16 adds basic arrangement editing for frozen regions. JUCE may request move, trim, split, and delete operations, but `sclang` applies snapped edits to canonical region state and emits the updated arrangement. Editing frozen/projected material does not mutate module clock-domain attachments or timing semantics.
+
+Milestone 17 adds breakpoint automation owned by `sclang`. JUCE may render automation lanes and request point changes, but breakpoint placement, interpolation, and parameter application during playback are engine-authored. The first target is the `Kick Pulse` mixer level.

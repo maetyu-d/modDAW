@@ -107,6 +107,21 @@
     }
 };
 
+~coerceBoolean = { |value, fallback = false|
+    var text;
+
+    if (value.isNil) {
+        fallback
+    } {
+        if (value.isKindOf(True) or: { value.isKindOf(False) }) {
+            value.booleanValue
+        } {
+            text = value.asString.toLower;
+            (text == "true") or: { text == "1" };
+        };
+    };
+};
+
 ~sendEnvelope = { |kind, type, payload = nil, correlationId = nil|
     var envelope;
     var jsonLine;
@@ -142,72 +157,128 @@
     var type;
     var messageId;
     var payload;
+    var enabled;
 
     type = ~envelopeValueAt.value(envelope, "type");
     messageId = ~envelopeValueAt.value(envelope, "messageId");
     payload = ~envelopeValueAt.value(envelope, "payload");
 
-    if (type == "engine.handshake") {
+    case
+    { type == "engine.handshake" } {
         ~sendEnvelope.value("event", "engine.ready", (state: "ready"), messageId);
-    } {
-        if (type == "engine.ping") {
-            ~sendEnvelope.value("response", "engine.pong", (state: "alive"), messageId);
-        } {
-            if (type == "transport.requestState") {
-                ~emitTransportState.value(messageId);
-            } {
-                if (type == "clockdomains.requestState") {
-                    ~emitClockDomainsState.value(messageId);
-                } {
-                    if (type == "modules.requestState") {
-                        ~emitModulesState.value(messageId);
-                    } {
-                        if (type == "mixer.requestState") {
-                            ~emitMixerState.value(messageId);
-                        } {
-                            if (type == "mixer.setLevel") {
-                                ~setMixerStripLevel.value(
-                                    ~envelopeValueAt.value(payload, "stripId"),
-                                    ~envelopeValueAt.value(payload, "level")
-                                );
-                            } {
-                                if (type == "mixer.setMuted") {
-                                    ~setMixerStripMuted.value(
-                                        ~envelopeValueAt.value(payload, "stripId"),
-                                        ~envelopeValueAt.value(payload, "muted")
-                                    );
-                                } {
-                        if (type == "validation.requestState") {
-                            ~emitValidationState.value(messageId);
-                        } {
-                        if (type == "modules.activateNextBar") {
-                            ~scheduleModuleActivateNextBar.value(~envelopeValueAt.value(payload, "moduleId"));
-                        } {
-                            if (type == "modules.updateCodeSurfaceNextBar") {
-                                ~scheduleModuleCodeSurfaceUpdateNextBar.value(
-                                    ~envelopeValueAt.value(payload, "moduleId"),
-                                    ~envelopeValueAt.value(payload, "codeSurface")
-                                );
-                            } {
-                                if (type == "transport.play") {
-                                    ~transportPlay.value;
-                                } {
-                                    if (type == "transport.stop") {
-                                        ~transportStop.value;
-                                    } {
-                                        ~sendEnvelope.value("error", "engine.error", (message: "Unknown message type"), messageId);
-                                    };
-                                };
-                            };
-                        };
-                                };
-                            };
-                        };
-                        };
-                    };
-                };
-            };
-        };
+    }
+    { type == "engine.ping" } {
+        ~sendEnvelope.value("response", "engine.pong", (state: "alive"), messageId);
+    }
+    { type == "transport.requestState" } {
+        ~emitTransportState.value(messageId);
+    }
+    { type == "transport.play" } {
+        ~transportPlay.value;
+    }
+    { type == "transport.stop" } {
+        ~transportStop.value;
+    }
+    { type == "clockdomains.requestState" } {
+        ~emitClockDomainsState.value(messageId);
+    }
+    { type == "modules.requestState" } {
+        ~emitModulesState.value(messageId);
+    }
+    { type == "modules.activateNextBar" } {
+        ~scheduleModuleActivateNextBar.value(~envelopeValueAt.value(payload, "moduleId"));
+    }
+    { type == "modules.updateCodeSurfaceNextBar" } {
+        ~scheduleModuleCodeSurfaceUpdateNextBar.value(
+            ~envelopeValueAt.value(payload, "moduleId"),
+            ~envelopeValueAt.value(payload, "codeSurface")
+        );
+    }
+    { type == "mixer.requestState" } {
+        ~emitMixerState.value(messageId);
+    }
+    { type == "mixer.setLevel" } {
+        ~setMixerStripLevel.value(
+            ~envelopeValueAt.value(payload, "stripId"),
+            ~envelopeValueAt.value(payload, "level")
+        );
+    }
+    { type == "mixer.setMuted" } {
+        ~setMixerStripMuted.value(
+            ~envelopeValueAt.value(payload, "stripId"),
+            ~envelopeValueAt.value(payload, "muted")
+        );
+    }
+    { type == "routes.requestState" } {
+        ~emitRoutesState.value(messageId);
+    }
+    { type == "routes.create" } {
+        enabled = ~envelopeValueAt.value(payload, "enabled");
+        if (enabled.isNil) { enabled = true };
+
+        ~createRoute.value(
+            ~envelopeValueAt.value(payload, "family"),
+            ~envelopeValueAt.value(payload, "source"),
+            ~envelopeValueAt.value(payload, "destination"),
+            enabled
+        );
+    }
+    { type == "routes.delete" } {
+        ~deleteRoute.value(~envelopeValueAt.value(payload, "routeId"));
+    }
+    { type == "regions.requestState" } {
+        ~emitArrangementState.value(messageId);
+    }
+    { type == "regions.freezeModule" } {
+        ~freezeModuleToRegion.value(~envelopeValueAt.value(payload, "moduleId"), messageId);
+    }
+    { type == "regions.move" } {
+        ~moveRegion.value(
+            ~envelopeValueAt.value(payload, "regionId"),
+            ~envelopeValueAt.value(payload, "deltaBeats") ? 0.0,
+            messageId
+        );
+    }
+    { type == "regions.trim" } {
+        ~trimRegion.value(
+            ~envelopeValueAt.value(payload, "regionId"),
+            ~envelopeValueAt.value(payload, "deltaBeats") ? 0.0,
+            messageId
+        );
+    }
+    { type == "regions.split" } {
+        ~splitRegion.value(~envelopeValueAt.value(payload, "regionId"), messageId);
+    }
+    { type == "regions.delete" } {
+        ~deleteRegion.value(~envelopeValueAt.value(payload, "regionId"), messageId);
+    }
+    { type == "automation.requestState" } {
+        ~emitAutomationState.value(messageId);
+    }
+    { type == "automation.addPoint" } {
+        ~addAutomationPoint.value(
+            ~envelopeValueAt.value(payload, "laneId"),
+            ~envelopeValueAt.value(payload, "value") ? 1.0,
+            messageId
+        );
+    }
+    { type == "automation.resetDemo" } {
+        ~resetAutomationDemo.value(~envelopeValueAt.value(payload, "laneId"), messageId);
+    }
+    { type == "project.save" } {
+        ~saveProject.value(~envelopeValueAt.value(payload, "path"), messageId);
+    }
+    { type == "project.load" } {
+        ~loadProject.value(~envelopeValueAt.value(payload, "path"), messageId);
+    }
+    { type == "validation.requestState" } {
+        ~emitValidationState.value(messageId);
+    }
+    { true } {
+        ~sendEnvelope.value("error", "engine.error", (
+            message: "Unknown message type",
+            type: type
+        ), messageId);
     };
 };
 

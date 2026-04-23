@@ -111,6 +111,9 @@ void EngineProcessManager::stop()
         clockDomainState = {};
         moduleState = {};
         mixerState = {};
+        routeState = {};
+        regionState = {};
+        automationState = {};
         validationState = {};
         childOutputBuffer.clear();
     }
@@ -156,6 +159,24 @@ MixerState EngineProcessManager::getMixerState() const
     return mixerState;
 }
 
+RouteState EngineProcessManager::getRouteState() const
+{
+    const juce::ScopedLock scopedLock(lock);
+    return routeState;
+}
+
+RegionState EngineProcessManager::getRegionState() const
+{
+    const juce::ScopedLock scopedLock(lock);
+    return regionState;
+}
+
+AutomationState EngineProcessManager::getAutomationState() const
+{
+    const juce::ScopedLock scopedLock(lock);
+    return automationState;
+}
+
 ValidationState EngineProcessManager::getValidationState() const
 {
     const juce::ScopedLock scopedLock(lock);
@@ -192,6 +213,21 @@ void EngineProcessManager::requestMixerState()
     sendMixerRequestState();
 }
 
+void EngineProcessManager::requestRouteState()
+{
+    sendRoutesRequestState();
+}
+
+void EngineProcessManager::requestRegionState()
+{
+    sendRegionsRequestState();
+}
+
+void EngineProcessManager::requestAutomationState()
+{
+    sendAutomationRequestState();
+}
+
 void EngineProcessManager::requestValidationState()
 {
     sendValidationRequestState();
@@ -219,6 +255,73 @@ void EngineProcessManager::requestMixerStripMuted(const juce::String& stripId, b
 {
     if (stripId.isNotEmpty())
         sendMixerSetMuted(stripId, muted);
+}
+
+void EngineProcessManager::requestRouteCreate(const juce::String& family,
+                                              const juce::String& source,
+                                              const juce::String& destination,
+                                              bool enabled)
+{
+    if (family.isNotEmpty() && source.isNotEmpty() && destination.isNotEmpty())
+        sendRoutesCreate(family, source, destination, enabled);
+}
+
+void EngineProcessManager::requestRouteDelete(const juce::String& routeId)
+{
+    if (routeId.isNotEmpty())
+        sendRoutesDelete(routeId);
+}
+
+void EngineProcessManager::requestProjectSave()
+{
+    sendProjectSave();
+}
+
+void EngineProcessManager::requestProjectLoad()
+{
+    sendProjectLoad();
+}
+
+void EngineProcessManager::requestModuleFreezeToRegion(const juce::String& moduleId)
+{
+    if (moduleId.isNotEmpty())
+        sendModuleFreezeToRegion(moduleId);
+}
+
+void EngineProcessManager::requestRegionMove(const juce::String& regionId, double deltaBeats)
+{
+    if (regionId.isNotEmpty())
+        sendRegionMove(regionId, deltaBeats);
+}
+
+void EngineProcessManager::requestRegionTrim(const juce::String& regionId, double deltaBeats)
+{
+    if (regionId.isNotEmpty())
+        sendRegionTrim(regionId, deltaBeats);
+}
+
+void EngineProcessManager::requestRegionSplit(const juce::String& regionId)
+{
+    if (regionId.isNotEmpty())
+        sendRegionSplit(regionId);
+}
+
+void EngineProcessManager::requestRegionDelete(const juce::String& regionId)
+{
+    if (regionId.isNotEmpty())
+        sendRegionDelete(regionId);
+}
+
+void EngineProcessManager::requestAutomationAddPoint(const juce::String& laneId, double value)
+{
+    if (laneId.isNotEmpty())
+        sendAutomationAddPoint(laneId, value);
+}
+
+void EngineProcessManager::requestAutomationResetDemo(const juce::String& laneId)
+{
+    if (laneId.isNotEmpty())
+        sendAutomationResetDemo(laneId);
 }
 
 void EngineProcessManager::run()
@@ -289,6 +392,9 @@ void EngineProcessManager::run()
         clockDomainState = {};
         moduleState = {};
         mixerState = {};
+        routeState = {};
+        regionState = {};
+        automationState = {};
         validationState = {};
     }
 
@@ -339,6 +445,9 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         sendClockDomainsRequestState();
         sendModulesRequestState();
         sendMixerRequestState();
+        sendRoutesRequestState();
+        sendRegionsRequestState();
+        sendAutomationRequestState();
         sendValidationRequestState();
         return;
     }
@@ -402,6 +511,46 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         return;
     }
 
+    if (envelope.type == moddaw::ids::typeRoutesState)
+    {
+        auto newRouteState = RouteState::fromPayload(envelope.payload);
+
+        {
+            const juce::ScopedLock scopedLock(lock);
+            routeState = newRouteState;
+        }
+
+        appendLog("ROUTES " + newRouteState.toSummaryString());
+        sendMixerRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeRegionsState)
+    {
+        auto newRegionState = RegionState::fromPayload(envelope.payload);
+
+        {
+            const juce::ScopedLock scopedLock(lock);
+            regionState = newRegionState;
+        }
+
+        appendLog("REGIONS " + newRegionState.toSummaryString());
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeAutomationState)
+    {
+        auto newAutomationState = AutomationState::fromPayload(envelope.payload);
+
+        {
+            const juce::ScopedLock scopedLock(lock);
+            automationState = newAutomationState;
+        }
+
+        appendLog("AUTOMATION " + newAutomationState.toSummaryString());
+        return;
+    }
+
     if (envelope.type == moddaw::ids::typeValidationState)
     {
         auto newValidationState = ValidationState::fromPayload(envelope.payload);
@@ -433,6 +582,66 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         sendModulesRequestState();
         return;
     }
+
+    if (envelope.type == moddaw::ids::typeRegionsCreated)
+    {
+        appendLog("REGIONS created " + juce::JSON::toString(envelope.payload, false));
+        sendRegionsRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeRegionsEdited)
+    {
+        appendLog("REGIONS edited " + juce::JSON::toString(envelope.payload, false));
+        sendRegionsRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeRegionsDeleted)
+    {
+        appendLog("REGIONS deleted " + juce::JSON::toString(envelope.payload, false));
+        sendRegionsRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeAutomationPointAdded)
+    {
+        appendLog("AUTOMATION point added " + juce::JSON::toString(envelope.payload, false));
+        sendAutomationRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeAutomationReset)
+    {
+        appendLog("AUTOMATION reset " + juce::JSON::toString(envelope.payload, false));
+        sendAutomationRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeProjectSaved)
+    {
+        appendLog("PROJECT saved " + juce::JSON::toString(envelope.payload, false));
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeProjectLoaded)
+    {
+        appendLog("PROJECT loaded " + juce::JSON::toString(envelope.payload, false));
+        sendClockDomainsRequestState();
+        sendModulesRequestState();
+        sendRoutesRequestState();
+        sendRegionsRequestState();
+        sendAutomationRequestState();
+        sendMixerRequestState();
+        sendValidationRequestState();
+        return;
+    }
+
+    if (envelope.type == moddaw::ids::typeProjectError)
+    {
+        appendLog("PROJECT error " + juce::JSON::toString(envelope.payload, false));
+        return;
+    }
 }
 
 void EngineProcessManager::sendHandshake()
@@ -441,7 +650,7 @@ void EngineProcessManager::sendHandshake()
                                  moddaw::ids::typeHandshake,
                                  makeObject({
                                      { "hostName", "modular-sc-daw" },
-                                     { "milestone", "M12" }
+                                     { "milestone", "M17" }
                                  })));
 }
 
@@ -508,6 +717,33 @@ void EngineProcessManager::sendMixerRequestState()
                                  })));
 }
 
+void EngineProcessManager::sendRoutesRequestState()
+{
+    connection.send(makeEnvelope(MessageKind::query,
+                                 moddaw::ids::typeRoutesRequestState,
+                                 makeObject({
+                                     { "request", "route-state" }
+                                 })));
+}
+
+void EngineProcessManager::sendRegionsRequestState()
+{
+    connection.send(makeEnvelope(MessageKind::query,
+                                 moddaw::ids::typeRegionsRequestState,
+                                 makeObject({
+                                     { "request", "region-state" }
+                                 })));
+}
+
+void EngineProcessManager::sendAutomationRequestState()
+{
+    connection.send(makeEnvelope(MessageKind::query,
+                                 moddaw::ids::typeAutomationRequestState,
+                                 makeObject({
+                                     { "request", "automation-state" }
+                                 })));
+}
+
 void EngineProcessManager::sendValidationRequestState()
 {
     connection.send(makeEnvelope(MessageKind::query,
@@ -534,6 +770,119 @@ void EngineProcessManager::sendMixerSetMuted(const juce::String& stripId, bool m
                                  makeObject({
                                      { "stripId", stripId },
                                      { "muted", muted }
+                                 })));
+}
+
+void EngineProcessManager::sendRoutesCreate(const juce::String& family,
+                                            const juce::String& source,
+                                            const juce::String& destination,
+                                            bool enabled)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRoutesCreate,
+                                 makeObject({
+                                     { "family", family },
+                                     { "source", source },
+                                     { "destination", destination },
+                                     { "enabled", enabled }
+                                 })));
+}
+
+void EngineProcessManager::sendRoutesDelete(const juce::String& routeId)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRoutesDelete,
+                                 makeObject({
+                                     { "routeId", routeId }
+                                 })));
+}
+
+void EngineProcessManager::sendProjectSave()
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeProjectSave,
+                                 makeObject({
+                                     { "target", "default-demo-project" }
+                                 })));
+}
+
+void EngineProcessManager::sendProjectLoad()
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeProjectLoad,
+                                 makeObject({
+                                     { "target", "default-demo-project" }
+                                 })));
+}
+
+void EngineProcessManager::sendModuleFreezeToRegion(const juce::String& moduleId)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRegionsFreezeModule,
+                                 makeObject({
+                                     { "moduleId", moduleId },
+                                     { "mode", "freeze" }
+                                 })));
+}
+
+void EngineProcessManager::sendRegionMove(const juce::String& regionId, double deltaBeats)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRegionsMove,
+                                 makeObject({
+                                     { "regionId", regionId },
+                                     { "deltaBeats", deltaBeats },
+                                     { "snap", "global-beat" }
+                                 })));
+}
+
+void EngineProcessManager::sendRegionTrim(const juce::String& regionId, double deltaBeats)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRegionsTrim,
+                                 makeObject({
+                                     { "regionId", regionId },
+                                     { "deltaBeats", deltaBeats },
+                                     { "snap", "global-beat" }
+                                 })));
+}
+
+void EngineProcessManager::sendRegionSplit(const juce::String& regionId)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRegionsSplit,
+                                 makeObject({
+                                     { "regionId", regionId },
+                                     { "snap", "global-beat-midpoint" }
+                                 })));
+}
+
+void EngineProcessManager::sendRegionDelete(const juce::String& regionId)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeRegionsDelete,
+                                 makeObject({
+                                     { "regionId", regionId }
+                                 })));
+}
+
+void EngineProcessManager::sendAutomationAddPoint(const juce::String& laneId, double value)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeAutomationAddPoint,
+                                 makeObject({
+                                     { "laneId", laneId },
+                                     { "value", value },
+                                     { "position", "engine-current-beat" }
+                                 })));
+}
+
+void EngineProcessManager::sendAutomationResetDemo(const juce::String& laneId)
+{
+    connection.send(makeEnvelope(MessageKind::command,
+                                 moddaw::ids::typeAutomationResetDemo,
+                                 makeObject({
+                                     { "laneId", laneId }
                                  })));
 }
 
