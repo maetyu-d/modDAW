@@ -4,6 +4,15 @@
 
 namespace
 {
+bool startsWithAny(const juce::String& line, std::initializer_list<const char*> prefixes)
+{
+    for (const auto* prefix : prefixes)
+        if (line.startsWith(prefix))
+            return true;
+
+    return false;
+}
+
 juce::String stateToText(EngineProcessManager::ConnectionState state)
 {
     switch (state)
@@ -57,6 +66,7 @@ EngineProcessManager::~EngineProcessManager()
 void EngineProcessManager::start()
 {
     stop();
+    cleanupStaleEngineProcesses();
 
     if (! connection.openSocket(moddaw::ids::hostReceivePort, moddaw::ids::engineReceivePort))
     {
@@ -119,7 +129,20 @@ void EngineProcessManager::stop()
         analysisState = {};
         structuralState = {};
         validationState = {};
+        transportRevision = 0;
+        clockDomainRevision = 0;
+        moduleRevision = 0;
+        mixerRevision = 0;
+        routeRevision = 0;
+        regionRevision = 0;
+        recoveryRevision = 0;
+        renderRevision = 0;
+        automationRevision = 0;
+        analysisRevision = 0;
+        structuralRevision = 0;
+        validationRevision = 0;
         childOutputBuffer.clear();
+        lastRateLimitedLogAtMs.clear();
     }
 
     setConnectionState(ConnectionState::offline);
@@ -210,6 +233,19 @@ ValidationState EngineProcessManager::getValidationState() const
     const juce::ScopedLock scopedLock(lock);
     return validationState;
 }
+
+std::uint64_t EngineProcessManager::getTransportRevision() const { const juce::ScopedLock scopedLock(lock); return transportRevision; }
+std::uint64_t EngineProcessManager::getClockDomainRevision() const { const juce::ScopedLock scopedLock(lock); return clockDomainRevision; }
+std::uint64_t EngineProcessManager::getModuleRevision() const { const juce::ScopedLock scopedLock(lock); return moduleRevision; }
+std::uint64_t EngineProcessManager::getMixerRevision() const { const juce::ScopedLock scopedLock(lock); return mixerRevision; }
+std::uint64_t EngineProcessManager::getRouteRevision() const { const juce::ScopedLock scopedLock(lock); return routeRevision; }
+std::uint64_t EngineProcessManager::getRegionRevision() const { const juce::ScopedLock scopedLock(lock); return regionRevision; }
+std::uint64_t EngineProcessManager::getRecoveryRevision() const { const juce::ScopedLock scopedLock(lock); return recoveryRevision; }
+std::uint64_t EngineProcessManager::getRenderRevision() const { const juce::ScopedLock scopedLock(lock); return renderRevision; }
+std::uint64_t EngineProcessManager::getAutomationRevision() const { const juce::ScopedLock scopedLock(lock); return automationRevision; }
+std::uint64_t EngineProcessManager::getAnalysisRevision() const { const juce::ScopedLock scopedLock(lock); return analysisRevision; }
+std::uint64_t EngineProcessManager::getStructuralRevision() const { const juce::ScopedLock scopedLock(lock); return structuralRevision; }
+std::uint64_t EngineProcessManager::getValidationRevision() const { const juce::ScopedLock scopedLock(lock); return validationRevision; }
 
 void EngineProcessManager::requestTransportState()
 {
@@ -547,7 +583,39 @@ void EngineProcessManager::setConnectionState(ConnectionState newState)
 void EngineProcessManager::appendLog(const juce::String& line)
 {
     const juce::ScopedLock scopedLock(lock);
+
+    juce::uint32 rateLimitMs = 0;
+    juce::String rateLimitKey;
+
+    if (startsWithAny(line, { "TRANSPORT ", "CLOCK-DOMAINS ", "MODULES ", "ANALYSIS ", "MIXER ", "ROUTES " }))
+    {
+        rateLimitMs = 500;
+        rateLimitKey = line.upToFirstOccurrenceOf(" ", false, false);
+    }
+    else if (line.startsWith("ENGINE "))
+    {
+        rateLimitMs = 100;
+        rateLimitKey = "ENGINE";
+    }
+
+    if (rateLimitMs > 0)
+    {
+        const auto now = juce::Time::getMillisecondCounter();
+        const auto previous = lastRateLimitedLogAtMs[rateLimitKey];
+
+        if (previous != 0 && (now - previous) < rateLimitMs)
+            return;
+
+        lastRateLimitedLogAtMs.set(rateLimitKey, now);
+    }
+
+    if (! pendingLogLines.isEmpty() && pendingLogLines[pendingLogLines.size() - 1] == line)
+        return;
+
     pendingLogLines.add(line);
+
+    while (pendingLogLines.size() > 400)
+        pendingLogLines.remove(0);
 }
 
 void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
@@ -555,6 +623,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
     if (envelope.type == moddaw::ids::typeReady)
     {
         setConnectionState(ConnectionState::ready);
+        sendTransportStop();
         sendTransportRequestState();
         sendClockDomainsRequestState();
         sendModulesRequestState();
@@ -581,6 +650,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             transportState = newTransportState;
+            ++transportRevision;
         }
 
         appendLog("TRANSPORT " + newTransportState.toSummaryString());
@@ -598,6 +668,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             clockDomainState = newClockDomainState;
+            ++clockDomainRevision;
         }
 
         appendLog("CLOCK-DOMAINS " + newClockDomainState.toSummaryString());
@@ -626,6 +697,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             moduleState = newModuleState;
+            ++moduleRevision;
         }
 
         appendLog("MODULES " + newModuleState.toSummaryString());
@@ -639,6 +711,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             mixerState = newMixerState;
+            ++mixerRevision;
         }
 
         appendLog("MIXER " + newMixerState.toSummaryString());
@@ -652,6 +725,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             routeState = newRouteState;
+            ++routeRevision;
         }
 
         appendLog("ROUTES " + newRouteState.toSummaryString());
@@ -666,6 +740,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             regionState = newRegionState;
+            ++regionRevision;
         }
 
         appendLog("REGIONS " + newRegionState.toSummaryString());
@@ -679,6 +754,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             automationState = newAutomationState;
+            ++automationRevision;
         }
 
         appendLog("AUTOMATION " + newAutomationState.toSummaryString());
@@ -692,6 +768,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             analysisState = newAnalysisState;
+            ++analysisRevision;
         }
 
         appendLog("ANALYSIS " + newAnalysisState.toSummaryString());
@@ -705,6 +782,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             structuralState = newStructuralState;
+            ++structuralRevision;
         }
 
         appendLog("STRUCTURAL " + newStructuralState.toSummaryString());
@@ -768,6 +846,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             validationState = newValidationState;
+            ++validationRevision;
         }
 
         appendLog("VALIDATION " + newValidationState.toSummaryString());
@@ -781,6 +860,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             recoveryState = newRecoveryState;
+            ++recoveryRevision;
         }
 
         appendLog("RECOVERY " + newRecoveryState.toSummaryString());
@@ -794,6 +874,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             renderState = newRenderState;
+            ++renderRevision;
         }
 
         appendLog("RENDER " + newRenderState.toSummaryString());
@@ -807,6 +888,7 @@ void EngineProcessManager::handleEnvelope(const MessageEnvelope& envelope)
         {
             const juce::ScopedLock scopedLock(lock);
             renderState = newRenderState;
+            ++renderRevision;
         }
 
         appendLog("RENDER complete " + newRenderState.toSummaryString());
@@ -1337,6 +1419,26 @@ void EngineProcessManager::sendModulesUpdateCodeSurfaceNextBar(const juce::Strin
                                      { "codeSurface", codeSurface },
                                      { "quantisation", "next-bar" }
                                  })));
+}
+
+void EngineProcessManager::cleanupStaleEngineProcesses() const
+{
+   #if JUCE_WINDOWS
+    return;
+   #else
+    auto bootScript = juce::File(MODULAR_SC_DAW_ROOT).getChildFile("sc-engine").getChildFile("boot.scd");
+
+    if (! bootScript.existsAsFile())
+        return;
+
+    juce::ChildProcess cleanupProcess;
+    if (cleanupProcess.start({ "/usr/bin/pkill", "-f", bootScript.getFullPathName() },
+                             juce::ChildProcess::wantStdOut | juce::ChildProcess::wantStdErr))
+    {
+        cleanupProcess.waitForProcessToFinish(1000);
+        juce::Thread::sleep(200);
+    }
+   #endif
 }
 
 juce::File EngineProcessManager::resolveEngineLaunchScript() const

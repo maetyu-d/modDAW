@@ -12,8 +12,10 @@ public:
     void paint(juce::Graphics& g) override;
 
 private:
+    static constexpr int maxLogLines = 300;
     juce::Label titleLabel;
     juce::TextEditor logEditor;
+    juce::StringArray logLines;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LogPanelComponent)
 };

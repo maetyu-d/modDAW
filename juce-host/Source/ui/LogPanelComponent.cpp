@@ -19,6 +19,20 @@ LogPanelComponent::LogPanelComponent()
 
 void LogPanelComponent::appendLine(const juce::String& line)
 {
+    logLines.add(line);
+
+    const auto needsTrim = logLines.size() > maxLogLines;
+
+    while (logLines.size() > maxLogLines)
+        logLines.remove(0);
+
+    if (needsTrim)
+    {
+        logEditor.setText(logLines.joinIntoString("\n"), juce::dontSendNotification);
+        logEditor.moveCaretToEnd();
+        return;
+    }
+
     logEditor.moveCaretToEnd();
     logEditor.insertTextAtCaret(line + "\n");
     logEditor.moveCaretToEnd();

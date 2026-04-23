@@ -36,7 +36,7 @@ root = PathName(thisProcess.nowExecutingPath).pathOnly;
 ~engineState[\analysis] = ~makeAnalysisPayload.value;
 ~engineState[\recovery] = ~makeRecoveryPayload.value;
 ~engineState[\render] = ~makeRenderPayload.value;
-~recoverFromAutosaveIfAvailable.value;
+~transportStop.value;
 ~startSocketLoop.value;
 ~startModuleActionLoop.value;
 ~startArrangementPlaybackLoop.value;

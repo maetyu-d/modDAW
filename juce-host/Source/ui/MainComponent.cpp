@@ -1,5 +1,17 @@
 #include "MainComponent.h"
 
+namespace
+{
+bool shouldKeepPlaybackLogLine(const juce::String& line)
+{
+    auto lower = line.toLowerCase();
+    return line.startsWith("STATE ")
+        || lower.contains("error")
+        || lower.contains("failed")
+        || lower.contains("exited");
+}
+}
+
 MainComponent::MainComponent()
 {
     addAndMakeVisible(statusBar);
@@ -103,6 +115,7 @@ MainComponent::MainComponent()
     moduleLanes.onModuleSelected = [this](const juce::String& moduleId)
     {
         selectedModuleId = moduleId;
+        selectionDirty = true;
     };
 
     moduleLanes.onFreezeModule = [this](const juce::String& moduleId)
@@ -205,7 +218,7 @@ MainComponent::MainComponent()
     };
 
     processManager.start();
-    startTimerHz(10);
+    startTimerHz(4);
     updateWorkflowVisibility();
     setWantsKeyboardFocus(true);
     grabKeyboardFocus();
@@ -373,47 +386,162 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
 void MainComponent::timerCallback()
 {
     const auto connectionState = processManager.getConnectionState();
-    const auto transportState = processManager.getTransportState();
-    const auto clockDomainState = processManager.getClockDomainState();
-    const auto moduleState = processManager.getModuleState();
-    const auto mixerState = processManager.getMixerState();
-    const auto routeState = processManager.getRouteState();
-    const auto regionState = processManager.getRegionState();
-    const auto recoveryState = processManager.getRecoveryState();
-    const auto renderState = processManager.getRenderState();
-    const auto automationState = processManager.getAutomationState();
-    const auto analysisState = processManager.getAnalysisState();
-    const auto structuralState = processManager.getStructuralState();
-    const auto validationState = processManager.getValidationState();
-
-    ensureSelectedModule(moduleState);
-
-    const auto* selectedModule = moduleState.findById(selectedModuleId);
-    const auto* selectedClockDomain = selectedModule != nullptr
-        ? clockDomainState.findById(selectedModule->clockDomainId)
-        : nullptr;
-
     statusBar.setConnectionState(connectionState);
-    globalRuler.setTransportState(transportState);
-    globalRuler.setStructuralState(structuralState);
-    globalRuler.setSelectedLaneOverlay(selectedModule, selectedClockDomain);
-    moduleLanes.setModuleState(moduleState);
-    moduleLanes.setRegionState(regionState);
-    moduleLanes.setStructuralState(structuralState);
-    moduleLanes.setSelectedModuleId(selectedModuleId);
-    codeSurface.setSelectedModule(selectedModule);
-    mixerPanel.setMixerState(mixerState);
-    automationPanel.setAutomationState(automationState);
-    routeGraphPanel.setRouteState(routeState);
-    routeListPanel.setRouteState(routeState);
-    transportPanel.setTransportState(transportState);
-    transportPanel.setRecoveryState(recoveryState);
-    transportPanel.setRenderState(renderState);
-    timingInspector.setInspectorState(transportState, selectedModule, selectedClockDomain, structuralState, analysisState);
-    validationPanel.setValidationState(validationState);
 
-    for (const auto& line : processManager.takePendingLogLines())
-        logPanel.appendLine(line);
+    const auto transportRevision = processManager.getTransportRevision();
+    const auto clockDomainRevision = processManager.getClockDomainRevision();
+    const auto moduleRevision = processManager.getModuleRevision();
+    const auto mixerRevision = processManager.getMixerRevision();
+    const auto routeRevision = processManager.getRouteRevision();
+    const auto regionRevision = processManager.getRegionRevision();
+    const auto recoveryRevision = processManager.getRecoveryRevision();
+    const auto renderRevision = processManager.getRenderRevision();
+    const auto automationRevision = processManager.getAutomationRevision();
+    const auto analysisRevision = processManager.getAnalysisRevision();
+    const auto structuralRevision = processManager.getStructuralRevision();
+    const auto validationRevision = processManager.getValidationRevision();
+
+    const auto transportChanged = transportRevision != lastTransportRevision;
+    const auto clockChanged = clockDomainRevision != lastClockDomainRevision;
+    const auto moduleChanged = moduleRevision != lastModuleRevision;
+    const auto mixerChanged = mixerRevision != lastMixerRevision;
+    const auto routeChanged = routeRevision != lastRouteRevision;
+    const auto regionChanged = regionRevision != lastRegionRevision;
+    const auto recoveryChanged = recoveryRevision != lastRecoveryRevision;
+    const auto renderChanged = renderRevision != lastRenderRevision;
+    const auto automationChanged = automationRevision != lastAutomationRevision;
+    const auto analysisChanged = analysisRevision != lastAnalysisRevision;
+    const auto structuralChanged = structuralRevision != lastStructuralRevision;
+    const auto validationChanged = validationRevision != lastValidationRevision;
+
+    if (transportChanged)
+        transportStateCache = processManager.getTransportState();
+
+    if (clockChanged)
+        clockDomainStateCache = processManager.getClockDomainState();
+
+    if (moduleChanged)
+    {
+        moduleStateCache = processManager.getModuleState();
+        ensureSelectedModule(moduleStateCache);
+    }
+
+    if (mixerChanged)
+        mixerStateCache = processManager.getMixerState();
+
+    if (routeChanged)
+        routeStateCache = processManager.getRouteState();
+
+    if (regionChanged)
+        regionStateCache = processManager.getRegionState();
+
+    if (recoveryChanged)
+        recoveryStateCache = processManager.getRecoveryState();
+
+    if (renderChanged)
+        renderStateCache = processManager.getRenderState();
+
+    if (automationChanged)
+        automationStateCache = processManager.getAutomationState();
+
+    if (analysisChanged)
+        analysisStateCache = processManager.getAnalysisState();
+
+    if (structuralChanged)
+        structuralStateCache = processManager.getStructuralState();
+
+    if (validationChanged)
+        validationStateCache = processManager.getValidationState();
+
+    const auto selectionChanged = selectionDirty;
+
+    const auto* selectedModule = moduleStateCache.findById(selectedModuleId);
+    const auto* selectedClockDomain = (selectedModule != nullptr)
+        ? clockDomainStateCache.findById(selectedModule->clockDomainId)
+        : nullptr;
+    const bool playbackActive = transportStateCache.isPlaying;
+
+    if (transportChanged)
+        globalRuler.setTransportState(transportStateCache);
+
+    if (structuralChanged && ! playbackActive)
+        globalRuler.setStructuralState(structuralStateCache);
+
+    if ((clockChanged || moduleChanged || selectionChanged) && ! playbackActive)
+        globalRuler.setSelectedLaneOverlay(selectedModule, selectedClockDomain);
+
+    if (moduleChanged)
+        moduleLanes.setModuleState(moduleStateCache);
+
+    if (regionChanged)
+        moduleLanes.setRegionState(regionStateCache);
+
+    if (structuralChanged)
+        moduleLanes.setStructuralState(structuralStateCache);
+
+    if (moduleChanged || selectionChanged)
+        moduleLanes.setSelectedModuleId(selectedModuleId);
+
+    if (moduleChanged || selectionChanged)
+        codeSurface.setSelectedModule(selectedModule);
+
+    if (mixerChanged)
+        mixerPanel.setMixerState(mixerStateCache);
+
+    if (automationChanged)
+        automationPanel.setAutomationState(automationStateCache);
+
+    if (routeChanged)
+    {
+        routeGraphPanel.setRouteState(routeStateCache);
+        routeListPanel.setRouteState(routeStateCache);
+    }
+
+    if (transportChanged)
+        transportPanel.setTransportState(transportStateCache);
+
+    if (recoveryChanged)
+        transportPanel.setRecoveryState(recoveryStateCache);
+
+    if (renderChanged)
+        transportPanel.setRenderState(renderStateCache);
+
+    if ((moduleChanged || clockChanged || structuralChanged || analysisChanged || selectionChanged)
+        || (transportChanged && ! playbackActive))
+        timingInspector.setInspectorState(transportStateCache, selectedModule, selectedClockDomain, structuralStateCache, analysisStateCache);
+
+    if (validationChanged)
+        validationPanel.setValidationState(validationStateCache);
+
+    lastTransportRevision = transportRevision;
+    lastClockDomainRevision = clockDomainRevision;
+    lastModuleRevision = moduleRevision;
+    lastMixerRevision = mixerRevision;
+    lastRouteRevision = routeRevision;
+    lastRegionRevision = regionRevision;
+    lastRecoveryRevision = recoveryRevision;
+    lastRenderRevision = renderRevision;
+    lastAutomationRevision = automationRevision;
+    lastAnalysisRevision = analysisRevision;
+    lastStructuralRevision = structuralRevision;
+    lastValidationRevision = validationRevision;
+    selectionDirty = false;
+
+    auto pendingLogLines = processManager.takePendingLogLines();
+
+    if (playbackActive)
+    {
+        for (const auto& line : pendingLogLines)
+            if (shouldKeepPlaybackLogLine(line))
+                logPanel.appendLine(line);
+    }
+    else
+    {
+        const auto startIndex = juce::jmax(0, pendingLogLines.size() - 24);
+
+        for (int i = startIndex; i < pendingLogLines.size(); ++i)
+            logPanel.appendLine(pendingLogLines[i]);
+    }
 }
 
 void MainComponent::ensureSelectedModule(const ModuleState& moduleState)
@@ -421,11 +549,15 @@ void MainComponent::ensureSelectedModule(const ModuleState& moduleState)
     if (moduleState.modules.isEmpty())
     {
         selectedModuleId.clear();
+        selectionDirty = true;
         return;
     }
 
     if (selectedModuleId.isEmpty() || moduleState.findById(selectedModuleId) == nullptr)
+    {
         selectedModuleId = moduleState.modules.getFirst().id;
+        selectionDirty = true;
+    }
 }
 
 void MainComponent::setWorkflowMode(const juce::String& mode)

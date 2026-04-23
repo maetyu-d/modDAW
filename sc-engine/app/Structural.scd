@@ -6,6 +6,7 @@
 ~structuralPoller = nil;
 ~lastStructuralPhraseIndex = -1;
 ~currentSceneName = "A sparse";
+~maxStructuralDirectiveHistory = 24;
 
 ~structuralConductorModule = (
     id: "module.conductor",
@@ -119,11 +120,10 @@
         targetModuleIds: ["module.kick", "module.hat", "module.texture"]
     );
 
-    ~structuralDirectives = ~structuralDirectives.add(directive);
+    ~structuralDirectives = ~structuralDirectives.add(directive).keep(~maxStructuralDirectiveHistory);
     ~applyStructuralDirective.value(directive);
     ~emitStructuralState.value;
     ~emitModulesState.value;
-    if (~markProjectDirty.notNil) { ~markProjectDirty.value("structural directive emitted") };
 };
 
 ~scheduleSceneTransition = { |quantizationTarget = "nextPhrase", afterCycles = 0, domainId = "global.main", sceneName = "Scene Change", correlationId = nil|
@@ -177,7 +177,6 @@
         }
     };
     ~emitStructuralState.value;
-    if (~markProjectDirty.notNil) { ~markProjectDirty.value("external cue received") };
     ~sendEnvelope.value("event", "structural.externalCueReceived", (cueName: cueName), correlationId);
 };
 
@@ -204,7 +203,6 @@
             readyTransitions.any { |ready| ready[\transitionId] == transition[\transitionId] }
         };
         ~emitStructuralState.value;
-        if (~markProjectDirty.notNil) { ~markProjectDirty.value("scene transition applied") };
     };
 };
 

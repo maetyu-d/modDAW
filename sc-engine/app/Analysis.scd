@@ -9,6 +9,8 @@
 ~analysisLastDensity = 0.0;
 ~analysisLastBrightness = 0.0;
 ~analysisLastOnset = false;
+~lastAnalysisStateEmitSeconds = 0.0;
+~minLiveAnalysisStateEmitInterval = 0.5;
 
 ~analysisModuleDefinition = (
     id: "module.analysis.kick",
@@ -59,6 +61,21 @@
     ~sendEnvelope.value(kind, "analysis.state", payload, correlationId);
 };
 
+~emitAnalysisStateThrottled = { |correlationId = nil, force = false|
+    var now;
+
+    if (correlationId.notNil) {
+        force = true;
+    };
+
+    now = Date.getDate.rawSeconds;
+
+    if (force or: { (now - ~lastAnalysisStateEmitSeconds) >= ~minLiveAnalysisStateEmitInterval }) {
+        ~lastAnalysisStateEmitSeconds = now;
+        ~emitAnalysisState.value(correlationId);
+    };
+};
+
 ~recordKickAnalysisEvent = { |beat, soundSpec|
     var amp;
     var brightness;
@@ -96,7 +113,11 @@
         };
     };
 
-    ~emitAnalysisState.value;
-    ~emitModulesState.value;
+    ~emitAnalysisStateThrottled.value;
+    if (~emitModulesStateThrottled.notNil) {
+        ~emitModulesStateThrottled.value;
+    } {
+        ~emitModulesState.value;
+    };
 };
 )

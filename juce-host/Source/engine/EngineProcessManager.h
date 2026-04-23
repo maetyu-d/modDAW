@@ -48,6 +48,18 @@ public:
     AnalysisState getAnalysisState() const;
     StructuralState getStructuralState() const;
     ValidationState getValidationState() const;
+    std::uint64_t getTransportRevision() const;
+    std::uint64_t getClockDomainRevision() const;
+    std::uint64_t getModuleRevision() const;
+    std::uint64_t getMixerRevision() const;
+    std::uint64_t getRouteRevision() const;
+    std::uint64_t getRegionRevision() const;
+    std::uint64_t getRecoveryRevision() const;
+    std::uint64_t getRenderRevision() const;
+    std::uint64_t getAutomationRevision() const;
+    std::uint64_t getAnalysisRevision() const;
+    std::uint64_t getStructuralRevision() const;
+    std::uint64_t getValidationRevision() const;
 
     void requestTransportState();
     void requestTransportPlay();
@@ -160,6 +172,7 @@ private:
     void sendStructuralExternalCue(const juce::String& cueName);
     void sendPerformanceRequestState();
     void sendPerformanceTriggerMacro(const juce::String& macroId, double value);
+    void cleanupStaleEngineProcesses() const;
     juce::File resolveEngineLaunchScript() const;
     juce::StringArray makeLaunchCommand(const juce::File& script) const;
 
@@ -179,7 +192,20 @@ private:
     AnalysisState analysisState;
     StructuralState structuralState;
     ValidationState validationState;
+    std::uint64_t transportRevision = 0;
+    std::uint64_t clockDomainRevision = 0;
+    std::uint64_t moduleRevision = 0;
+    std::uint64_t mixerRevision = 0;
+    std::uint64_t routeRevision = 0;
+    std::uint64_t regionRevision = 0;
+    std::uint64_t recoveryRevision = 0;
+    std::uint64_t renderRevision = 0;
+    std::uint64_t automationRevision = 0;
+    std::uint64_t analysisRevision = 0;
+    std::uint64_t structuralRevision = 0;
+    std::uint64_t validationRevision = 0;
     juce::StringArray pendingLogLines;
+    juce::HashMap<juce::String, juce::uint32> lastRateLimitedLogAtMs;
     juce::uint32 lastPingSentAtMs = 0;
     juce::uint32 lastHandshakeSentAtMs = 0;
     juce::String childOutputBuffer;

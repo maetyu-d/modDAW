@@ -70,7 +70,7 @@
     mixerGain = ~effectiveModuleMixerGain.value(~kickModuleId);
     ampScale = value.asFloat.clip(0.0, 1.0);
 
-    if (~audioServerReady and: { mixerGain > 0.0001 }) {
+    if (~audioServerReady and: { ~synthDefsInstalled ? false } and: { mixerGain > 0.0001 }) {
         Synth(\modDawKickPulse, [
             \amp, ((soundSpec[\amp] ? 0.5) * mixerGain * (1.0 + ampScale)).clip(0.0, 1.2),
             \baseFreq, (soundSpec[\baseFreq] ? 74.0) * (1.0 + (ampScale * 0.15)),

@@ -68,7 +68,7 @@
         sourceStripId: "strip.module.kick",
         targetModuleId: "module.kick",
         returnStripId: "return.reverb",
-        level: 0.22,
+        level: 0.0,
         mode: "post"
     ),
     (

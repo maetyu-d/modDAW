@@ -76,9 +76,12 @@
 
 ~transportStop = {
     if (~transportState[\isPlaying]) {
-        ~transportState.put(\accumulatedBeats, ~captureTransportBeats.value);
+        ~transportState.put(\accumulatedBeats, 0.0);
         ~transportState.put(\startedAtSeconds, nil);
         ~transportState.put(\isPlaying, false);
+    } {
+        ~transportState.put(\accumulatedBeats, 0.0);
+        ~transportState.put(\startedAtSeconds, nil);
     };
 
     ~stopKickModule.value;

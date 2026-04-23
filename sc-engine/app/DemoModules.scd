@@ -52,9 +52,12 @@
 ~demoModules = [];
 ~moduleRuntimeState = Dictionary.new;
 ~audioServerReady = false;
+~synthDefsInstalled = false;
 ~kickPoller = nil;
 ~moduleActionPoller = nil;
 ~kickModuleId = "module.kick";
+~lastModulesStateEmitSeconds = 0.0;
+~minLiveModulesStateEmitInterval = 0.2;
 
 ~definitionForModuleId = { |moduleId|
     ~moduleDefinitions.detect({ |definition| definition[\id] == moduleId }, { nil })
@@ -210,6 +213,21 @@
     ~demoModules = ~makeModulesPayload.value[\modules];
     ~engineState[\modules] = ~demoModules;
     ~sendEnvelope.value(kind, "modules.state", (modules: ~demoModules), correlationId);
+};
+
+~emitModulesStateThrottled = { |correlationId = nil, force = false|
+    var now;
+
+    if (correlationId.notNil) {
+        force = true;
+    };
+
+    now = Date.getDate.rawSeconds;
+
+    if (force or: { (now - ~lastModulesStateEmitSeconds) >= ~minLiveModulesStateEmitInterval }) {
+        ~lastModulesStateEmitSeconds = now;
+        ~emitModulesState.value(correlationId);
+    };
 };
 
 ~setModuleLifecycle = { |moduleId, lifecycleState|
@@ -426,27 +444,33 @@
 
 ~bootAudioEngine = {
     var server;
+    var onReady;
 
     server = Server.default;
+    ~audioServerReady = false;
+    ~synthDefsInstalled = false;
 
-    if (server.serverRunning) {
-        ~audioServerReady = true;
+    onReady = {
         ~installDemoSynthDefs.value;
+        server.sync;
+        ~synthDefsInstalled = true;
+        ~audioServerReady = true;
         ~setModuleLifecycle.value(~kickModuleId, "ready");
         ~emitModulesState.value;
+
+        if (~transportState[\isPlaying]) {
+            ~startKickModule.value;
+        };
+    };
+
+    if (server.serverRunning) {
+        onReady.value;
     } {
         ~setModuleLifecycle.value(~kickModuleId, "booting-audio");
         ~emitModulesState.value;
 
         server.waitForBoot({
-            ~audioServerReady = true;
-            ~installDemoSynthDefs.value;
-            ~setModuleLifecycle.value(~kickModuleId, "ready");
-            ~emitModulesState.value;
-
-            if (~transportState[\isPlaying]) {
-                ~startKickModule.value;
-            };
+            onReady.value;
         });
 
         server.boot;
@@ -459,7 +483,7 @@
         ~kickPoller = nil;
     };
 
-    if (~audioServerReady.not) {
+    if (~audioServerReady.not or: { ~synthDefsInstalled.not }) {
         ~setModuleLifecycle.value(~kickModuleId, "waiting-audio");
         ~emitModulesState.value;
     } {
@@ -525,6 +549,9 @@
     };
 
     ~clearModuleActivationRequest.value(~kickModuleId);
+    if (~moduleRuntimeState[~kickModuleId].notNil) {
+        ~moduleRuntimeState[~kickModuleId].put(\lastTriggeredStep, -1);
+    };
     ~setModuleLifecycle.value(~kickModuleId, if(~audioServerReady) { "ready" } { "idle" });
     ~emitModulesState.value;
 };

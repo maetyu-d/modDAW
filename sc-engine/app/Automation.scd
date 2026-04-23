@@ -17,6 +17,8 @@
 ];
 
 ~automationPlaybackPoller = nil;
+~lastAutomationMixerStateEmitSeconds = 0.0;
+~minAutomationMixerStateEmitInterval = 0.25;
 
 ~automationLaneById = { |laneId|
     ~automationLanes.detect({ |lane| lane[\laneId] == laneId }, { nil })
@@ -97,6 +99,7 @@
 ~processAutomationPlayback = {
     var currentBeat;
     var changed;
+    var now;
 
     currentBeat = ~captureTransportBeats.value;
     changed = false;
@@ -120,7 +123,11 @@
     };
 
     if (changed) {
-        ~emitMixerState.value;
+        now = Date.getDate.rawSeconds;
+        if ((now - ~lastAutomationMixerStateEmitSeconds) >= ~minAutomationMixerStateEmitInterval) {
+            ~lastAutomationMixerStateEmitSeconds = now;
+            ~emitMixerState.value;
+        };
     };
 };
 
