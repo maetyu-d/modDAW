@@ -48,7 +48,7 @@ void ModuleLanesComponent::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff8f99a5));
     g.setFont(juce::FontOptions(12.5f));
-    g.drawText("Select one lane to show a local timing overlay", header.removeFromRight(280).toNearestInt(), juce::Justification::centredRight);
+    g.drawText("Select a lane", header.removeFromRight(180).toNearestInt(), juce::Justification::centredRight);
 
     if (state.modules.isEmpty())
         return;
@@ -83,7 +83,7 @@ void ModuleLanesComponent::paint(juce::Graphics& g)
 
         g.setColour(juce::Colour(0xff9ea7b3));
         g.setFont(juce::FontOptions(12.0f));
-        g.drawText("clock " + module.clockDomainId + " | state " + module.lifecycleState + " | " + module.behaviourType,
+        g.drawText(module.clockDomainId + " | " + module.lifecycleState,
                    juce::Rectangle<float>(lane.getX() + 12.0f, lane.getY() + 28.0f, lane.getWidth() - freezeButton.getWidth() - 34.0f, 16.0f).toNearestInt(),
                    juce::Justification::centredLeft);
 
@@ -102,7 +102,7 @@ void ModuleLanesComponent::paint(juce::Graphics& g)
             g.setColour(juce::Colour(0xff6ee7b7));
             g.drawRoundedRectangle(liveLinkButton.reduced(0.5f), 5.0f, 1.0f);
             g.setColour(juce::Colour(0xfff3f5f7));
-            g.drawText("Live Link", liveLinkButton.toNearestInt(), juce::Justification::centred);
+            g.drawText("Link", liveLinkButton.toNearestInt(), juce::Justification::centred);
         }
 
         auto regions = regionState.regionsForModule(module.id);
@@ -179,7 +179,7 @@ void ModuleLanesComponent::paint(juce::Graphics& g)
             {
                 g.setColour(juce::Colour(0xffc5d99a));
                 g.setFont(juce::FontOptions(11.5f));
-                g.drawText("latest: " + latest->toSummaryString(),
+                g.drawText(latest->toSummaryString(),
                            juce::Rectangle<float>(lane.getX() + 12.0f, lane.getBottom() - 20.0f, lane.getWidth() - 24.0f, 14.0f).toNearestInt(),
                            juce::Justification::centredLeft);
                 continue;
@@ -188,13 +188,12 @@ void ModuleLanesComponent::paint(juce::Graphics& g)
 
         g.setColour(isSelected ? juce::Colour(0xff7dd3fc) : juce::Colour(0xff8f99a5));
         g.setFont(juce::FontOptions(11.5f));
-        auto footer = juce::String(isSelected ? "selected lane overlay active | frozen/live-linked regions are engine-owned" : "click to select lane");
+        auto footer = juce::String(isSelected ? "selected" : "click to select");
         if (const auto* selectedRegion = findSelectedRegion())
             if (selectedRegion->moduleId == module.id)
-                footer += " | " + (selectedRegion->regionIdentity.isNotEmpty() ? selectedRegion->regionIdentity : selectedRegion->source)
-                       + " | " + selectedRegion->editPolicy;
+                footer += " | " + (selectedRegion->regionIdentity.isNotEmpty() ? selectedRegion->regionIdentity : selectedRegion->source);
         if (module.lastStructuralDirective.isNotEmpty())
-            footer += juce::String(" | influenced by ") + module.lastStructuralDirective;
+            footer += " | driven";
         g.drawText(footer,
                    juce::Rectangle<float>(lane.getX() + 12.0f, lane.getBottom() - 20.0f, lane.getWidth() - 24.0f, 14.0f).toNearestInt(),
                    juce::Justification::centredLeft);

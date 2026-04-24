@@ -2,7 +2,7 @@
 
 ModulesPanelComponent::ModulesPanelComponent()
 {
-    titleLabel.setText("Modules (sclang)", juce::dontSendNotification);
+    titleLabel.setText("Modules", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     summaryLabel.setJustificationType(juce::Justification::centredLeft);
 
@@ -56,7 +56,10 @@ void ModulesPanelComponent::refreshText()
         lines.add(module.displayName + " [" + module.id + "]");
         lines.add("  lifecycle=" + module.lifecycleState
                   + " clockDomain=" + module.clockDomainId
+                  + " timingMode=" + module.timingMode
                   + " behaviour=" + module.behaviourType);
+        if (! module.capabilities.isEmpty())
+            lines.add("  capabilities=" + module.capabilities.joinIntoString(", "));
         lines.add("  codeSurface=" + module.codeSurface);
         lines.add({});
     }

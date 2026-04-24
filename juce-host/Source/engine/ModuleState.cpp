@@ -47,7 +47,7 @@ juce::String CodeSurfaceEntry::currentEditableCode() const
 
 juce::String ModuleEntry::toSummaryString() const
 {
-    return displayName + " | " + lifecycleState + " | " + clockDomainId + " | " + behaviourType;
+    return displayName + " | " + lifecycleState + " | " + clockDomainId + " | " + timingMode + " | " + behaviourType;
 }
 
 juce::String ModuleEntry::currentEditableCodeSurface() const
@@ -99,6 +99,7 @@ ModuleState ModuleState::fromPayload(const juce::var& payload)
         entry.id = readString(values, "id");
         entry.displayName = readString(values, "displayName");
         entry.clockDomainId = readString(values, "clockDomainId");
+        entry.timingMode = readString(values, "timingMode");
         entry.lifecycleState = readString(values, "lifecycleState");
         entry.behaviourType = readString(values, "behaviourType");
         entry.laneType = readString(values, "laneType");
@@ -109,7 +110,24 @@ ModuleState ModuleState::fromPayload(const juce::var& payload)
         entry.pendingCodeSurface = readString(values, "pendingCodeSurface");
         entry.codeSurfaceState = readString(values, "codeSurfaceState");
         entry.lastCodeEvalMessage = readString(values, "lastCodeEvalMessage");
+        entry.pendingActivationBarIndex = readInt(values, "pendingActivationBarIndex", 0);
         entry.pendingCodeSwapBarIndex = readInt(values, "pendingCodeSwapBarIndex", 0);
+        entry.baseFrequency = values["baseFrequency"];
+        entry.accent = values["accent"];
+        entry.density = values["density"];
+        entry.spread = values["spread"];
+
+        if (auto* steps = values["stepPattern"].getArray())
+        {
+            for (const auto& step : *steps)
+                entry.stepPattern.add(static_cast<int>(step));
+        }
+
+        if (auto* capabilities = values["capabilities"].getArray())
+        {
+            for (const auto& capability : *capabilities)
+                entry.capabilities.add(capability.toString());
+        }
 
         if (auto* surfaces = values["codeSurfaces"].getArray())
         {

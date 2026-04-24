@@ -1,135 +1,130 @@
 # Architecture
 
-## Process Boundaries
+## Migration State
 
-### JUCE host
+The repository is in a staged migration from:
 
-The JUCE application is the desktop shell. It is responsible for:
+- JUCE shell
+- `sclang` musical engine
+- `scsynth` audio engine
 
-- launching and supervising the engine process
-- rendering UI
-- presenting status and logs
-- editing code surfaces
-- requesting engine actions
-- displaying engine-owned timing state
+to:
 
-The JUCE host is not allowed to become the authority for musical time.
+- JUCE-native application shell
+- JUCE-native transport and timing
+- JUCE-native module execution
+- JUCE-native audio engine
+- JUCE-native routing, mixer, scheduler, and persistence
 
-### sclang
+`J1` removes the runtime requirement for the external SuperCollider engine while keeping the existing UI and state model alive through an internal JUCE compatibility layer.
 
-`sclang` is the canonical musical engine. It is responsible for:
+`J2` moves global transport ownership into a JUCE-native `TransportEngine`.
 
-- transport state
-- global and local clock domains
-- timing relations
-- ratios
-- phase
-- quantised timing boundaries
-- module behaviour
-- module lifecycle
-- code evaluation results
+`J3` moves clock-domain ownership into a JUCE-native `ClockDomainManager`.
 
-All timing and musical decisions originate here.
+`J4` moves module identity, timing attachment, lifecycle state, and demo behaviour ownership into a JUCE-native `ModuleRegistry`.
 
-### scsynth
+`J5` moves audible output into a JUCE-native `AudioEngine`.
 
-`scsynth` is the audio engine. It is responsible for:
+`J6` moves routing and mixer authority into JUCE-native `RoutingGraph` and `MixerEngine` layers.
 
-- sound synthesis
-- audio execution
-- server-side DSP graph execution
+`J7` moves quantised action ownership into a JUCE-native `Scheduler`.
 
-In later milestones, `sclang` will direct `scsynth`. The JUCE host will not bypass `sclang` to become the musical authority.
+`J8` replaces passive code-surface text with JUCE-native editable behaviour parsing and application.
 
-## Timing Authority Rules
+## Runtime Boundaries After J1
 
-- JUCE may render timing state, but does not author it.
-- JUCE may request timing changes, but `sclang` decides them.
-- `sclang` is the sole source of truth for transport, phase, quantisation, and timing boundaries.
-- `scsynth` executes audio under engine control and does not define musical authority.
+### JUCE application
 
-## UI vs Engine Responsibilities
+The JUCE application now owns the running desktop process.
 
-### UI responsibilities
+For `J1` through `J5`, it is responsible for:
 
-- visual ruler presentation
-- lane presentation
-- local timing overlays
-- status indicators
-- log display
-- code editing surfaces
-- user interaction
+- application startup
+- UI rendering
+- internal engine status
+- JUCE-native global transport playback state
+- JUCE-native clock-domain computation
+- JUCE-native module registry and lifecycle state
+- JUCE-native audio callback and sound generation
+- JUCE-native routing and mixer state
+- in-memory demo state for the remaining existing views
+- user interaction and request routing
 
-### Engine responsibilities
+The current internal engine is intentionally a compatibility layer, not the finished native engine architecture yet.
 
-- authoritative transport state
-- authoritative clock-domain graph
-- module activation state
-- module code evaluation
-- quantised scheduling decisions
-- timing inspection data
+### Legacy SuperCollider runtime
 
-Milestone 2 adds one canonical global transport implemented in `sclang`. JUCE may request transport actions and render returned state, but it still does not author tempo, phase, beat position, or bar boundaries.
+The repository still contains:
 
-Milestone 4 adds plural clock domains, also authored in `sclang`. The host may inspect the domain graph and display derived timing values, but it still does not compute or own clock relationships.
+- `sc-engine/`
+- `third_party/supercollider/`
 
-Milestone 5 adds a minimal module model, also authored in `sclang`. JUCE may inspect module identity, attachment, lifecycle state, and placeholder code-surface text, but it does not own module lifecycle or behaviour.
+These are legacy implementation artifacts during migration. They are no longer required to launch the app in `J1`.
 
-Milestone 6 adds a selected-lane local timing overlay in JUCE. The host computes only the visual projection from engine-authored transport, module attachment, and clock-domain ratio data. It does not become the authority for those timing relationships.
+## Authority Model During Migration
 
-Milestone 7 adds the first sound path. `sclang` boots and supervises `scsynth`, defines the demo synth behaviour, and triggers sound from the canonical transport. JUCE remains only a requester and renderer.
+Before the migration, musical authority lived in `sclang`.
 
-Milestone 8 adds the first quantised action. JUCE may request `activate next bar`, but `sclang` computes the bar boundary, queues the lifecycle change, and activates the module when the canonical transport reaches that boundary.
+From `J1` onward, the migration direction is:
 
-Milestone 10 adds a timing inspector in JUCE. The host may display timing relations for the selected lane, but it still derives those views from engine-authored transport, clock-domain ratio, and phase data rather than owning those values itself.
+- JUCE becomes the sole runtime authority
+- external `sclang` / `scsynth` processes are retired
+- the conceptual model is preserved while engine ownership moves into C++
 
-Milestone 11 adds minimal validation in `sclang`. The engine is responsible for deciding whether the current transport, clock-domain graph, and module references satisfy the prototype rules. JUCE may display findings, but it does not become the authority for those validation results.
+`J1` does not complete that authority transfer yet. It removes the runtime process dependency.
 
-Milestone 12 adds a minimal mixer owned by `sclang`. JUCE may display strips and request gain or mute changes, but the engine remains the source of truth for mixer state and for how those levels affect module sound output.
+`J2` begins the real authority transfer by moving transport playback, bar/beat progression, and ruler timing into JUCE while the rest of the system still runs through compatibility-layer state.
 
-Milestone 13 adds explicit routing owned by `sclang`. JUCE may render the route list and request create/delete operations, but endpoint validation, route identity, enabled state, and route effects are authored by the engine. The current UI is a list rather than a graph; graph editing is intentionally deferred to `M20`.
+`J3` continues that transfer by moving global, local, derived, and free-running clock-domain computation into JUCE. Domain relations and overlay timing now come from native code instead of placeholder host state.
 
-Milestone 14 adds persistent project state owned by `sclang`. JUCE may request save/load, but the engine serializes declarative project state and reconstructs runtime state from the saved project. Raw `scsynth` node/server runtime is not persisted as canonical truth.
+`J4` continues it again by moving module identity and runtime ownership into C++ objects. The UI now receives module state from a native registry rather than from hand-built placeholder records.
 
-Milestone 15 adds frozen timeline regions owned by `sclang`. JUCE may request a module freeze and render returned region blocks, but region identity, anchoring, duration, replay material, and playback scheduling are engine-authored. The first implementation stores frozen demo material as declarative event offsets and sound parameters rather than waveform files.
+`J5` continues it again by moving the first audible engine into JUCE. Sound is now rendered by a native audio callback instead of `scsynth`.
 
-Milestone 16 adds basic arrangement editing for frozen regions. JUCE may request move, trim, split, and delete operations, but `sclang` applies snapped edits to canonical region state and emits the updated arrangement. Editing frozen/projected material does not mutate module clock-domain attachments or timing semantics.
+`J6` continues it again by moving route validation and mixer gain authority into JUCE. Audio routes, strip gain, group assignment, mute, and master level now affect the native sound path.
 
-Milestone 17 adds breakpoint automation owned by `sclang`. JUCE may render automation lanes and request point changes, but breakpoint placement, interpolation, and parameter application during playback are engine-authored. The first target is the `Kick Pulse` mixer level.
+`J7` continues it again by moving boundary resolution into JUCE. Module activation and surface-apply requests now resolve at native beat, bar, and phrase boundaries.
 
-Milestone 18 adds multiple code surfaces per module. JUCE may choose and edit a surface, but `sclang` owns surface identity, pending eval, active revisions, diagnostics, and fallback. A failed surface eval is contained to that surface and does not replace the previous working revision.
+`J8` continues it again by moving behaviour editing into typed C++ parsing. Invalid surface edits are rejected while the previous valid behaviour stays active.
 
-Milestone 19 adds structural/conductor modules owned by `sclang`. A conductor may emit phrase-level directives such as section, density, sync cue, phrase reset, orchestration, and target modules. JUCE renders those directives as a structural lane and inspector text, but the conductor timing and its influence on module behaviour remain engine-authored.
+## Target JUCE-Native Engine Shape
 
-Milestone 20 adds a route graph UI. The graph is another view/controller over the same `sclang` route model introduced in M13: JUCE may draw nodes, ports, and connection gestures, but route creation, deletion, identity, endpoint compatibility, enabled state, and route list/graph consistency remain engine-authored.
+The intended native engine split is:
 
-Milestone 21 adds richer clock-domain relation types. JUCE may request a relation change from the timing inspector, but `sclang` validates the requested relation, updates canonical clock-domain definitions, and emits the resulting timing state. Invalid relation types, global-domain edits, and out-of-range phase offsets are rejected by the engine.
+- `AudioEngine`
+- `TransportEngine`
+- `ClockDomain`
+- `ClockDomainManager`
+- `Module`
+- `ModuleRegistry`
+- `ModuleProcessor`
+- `RoutingGraph`
+- `MixerEngine`
+- `Scheduler`
+- `AutomationEngine`
+- `ProjectState`
 
-Milestone 22 adds phrase-level boundaries. Clock domains expose engine-owned phrase lengths and phrase phase. JUCE may request structural scene transitions for `nextPhrase`, `afterNCycles`, or `externalCue`, but `sclang` computes pending boundary beats and applies the transition when canonical transport reaches the boundary or cue.
+UI components are expected to remain mostly in place and be reconnected from the compatibility layer to these native engine objects as the migration progresses.
 
-Milestone 23 adds group/bus mixing. JUCE may display mixer hierarchy and request module-to-group assignment, group level, or group mute changes, but `sclang` owns the bus assignment model and applies group gain in the module audio path before master gain.
+## What J1 Preserves
 
-Milestone 24 adds sends and returns. JUCE may display send level and pre/post mode controls, but `sclang` owns send definitions, return strip state, and how aux gain is derived from module, group, return, and master state. The first shared FX path is SC-native and intentionally simple.
+`J1` keeps the current prototype legible by preserving:
 
-Milestone 25 adds explicit timeline material identity. `sclang` distinguishes frozen detached regions from live-linked module projections. JUCE may request creation and edits, but the engine preserves each region's identity and edit policy so projected arrangement edits do not silently rewrite module behaviour or clock semantics.
+- the existing JUCE UI shell
+- typed host-side state objects
+- the current module, mixer, route, automation, region, analysis, structural, recovery, render, and validation views
+- the existing request surface used by the UI
 
-Milestone 26 adds external/performance input through host keyboard mappings. JUCE captures simple input gestures and sends typed performance macro requests, while `sclang` owns the mapping results, including immediate module accents, external cue release, and structural density directives.
+## What J1 Removes
 
-Milestone 27 adds analysis and feedback modules. `sclang` owns the analysis module lifecycle, feature extraction, derived control values, downstream module influence, and emitted `analysis.state`; JUCE displays the analysis route and latest values without becoming the source of truth for adaptive behaviour.
+`J1` removes the runtime requirement for:
 
-Milestone 28 adds error containment and recovery. Code-surface failures stay attached to the affected module surface and preserve the previous working revision. `sclang` owns dirty-state tracking and declarative recovery autosaves; JUCE displays recovery status and may request recovery state, but it does not reconstruct musical state from host-owned data.
+- child-process launch of `sclang`
+- socket communication with a separate SC engine
+- SC runtime availability just to open the app
 
-Milestone 29 adds offline render and stem export requests. JUCE may ask for a full mix or stems, but `sclang` owns render range interpretation, event reconstruction, mixer/stem state, and artifact writing. The first export format is a deterministic render package rather than a waveform, so it remains debuggable while preserving engine timing authority.
+## Deferred To Later J Milestones
 
-Milestone 30 adds workflow modes in JUCE for arrangement, mixer, graph, and code work. These modes only reorganize existing engine-owned views and shortcuts; they do not create a host-side project model or host-authored musical timing.
-
-## Runtime Notes
-
-The current stable runtime favors minimal host work over dense live mirroring:
-
-- JUCE updates only changed engine state
-- playback-time logging is filtered
-- high-frequency engine playback emissions are throttled
-- transport stop returns the prototype to a clean bar-1 restart point
-
-These limits are implementation choices for prototype stability, not a transfer of timing authority to the host.
+- JUCE-native persistence format
+- retirement of legacy SC runtime files and old protocol docs

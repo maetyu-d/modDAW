@@ -10,6 +10,8 @@ struct ClockDomainEntry
     juce::String displayName;
     juce::String relationType;
     juce::String relationDescription;
+    int meterNumerator = 4;
+    int meterDenominator = 4;
     double ratioToParent = 1.0;
     double phaseOffsetBeats = 0.0;
     int phraseLengthBars = 1;
@@ -17,6 +19,8 @@ struct ClockDomainEntry
     int phraseIndex = 0;
     double phrasePhase = 0.0;
     double nextPhraseBeat = 4.0;
+    double absoluteBeatPosition = 0.0;
+    double barLengthBeats = 4.0;
     double localBeatPosition = 0.0;
     int localBarIndex = 1;
     double localBeatInBar = 1.0;

@@ -31,6 +31,11 @@ MainComponent::MainComponent()
     addAndMakeVisible(graphModeButton);
     addAndMakeVisible(codeModeButton);
 
+    arrangementModeButton.setButtonText("Arrange");
+    mixerModeButton.setButtonText("Mix");
+    graphModeButton.setButtonText("Route");
+    codeModeButton.setButtonText("Code");
+
     arrangementModeButton.onClick = [this] { setWorkflowMode("arrangement"); };
     mixerModeButton.onClick = [this] { setWorkflowMode("mixer"); };
     graphModeButton.onClick = [this] { setWorkflowMode("graph"); };
@@ -234,91 +239,68 @@ MainComponent::~MainComponent()
 void MainComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff0b0d10));
-
-    g.setColour(juce::Colour(0xfff3f5f7));
-    g.setFont(juce::FontOptions(20.0f, juce::Font::bold));
-    g.drawText("Modular SC DAW", 16, 12, 240, 24, juce::Justification::centredLeft);
-
-    g.setColour(juce::Colour(0xff8d97a6));
-    g.setFont(juce::FontOptions(12.5f));
-    g.drawText("M30 workflow pass", 236, 13, 260, 22, juce::Justification::centredLeft);
 }
 
 void MainComponent::resized()
 {
     auto area = getLocalBounds().reduced(16);
-    auto headerArea = area.removeFromTop(36);
+    auto headerArea = area.removeFromTop(28);
     statusBar.setBounds(headerArea.removeFromRight(300));
-    auto modeArea = headerArea.removeFromRight(440);
-    auto modeWidth = (modeArea.getWidth() - 24) / 4;
+    auto modeArea = headerArea.removeFromRight(320);
+    auto modeWidth = (modeArea.getWidth() - 18) / 4;
     arrangementModeButton.setBounds(modeArea.removeFromLeft(modeWidth));
-    modeArea.removeFromLeft(8);
+    modeArea.removeFromLeft(6);
     mixerModeButton.setBounds(modeArea.removeFromLeft(modeWidth));
-    modeArea.removeFromLeft(8);
+    modeArea.removeFromLeft(6);
     graphModeButton.setBounds(modeArea.removeFromLeft(modeWidth));
-    modeArea.removeFromLeft(8);
+    modeArea.removeFromLeft(6);
     codeModeButton.setBounds(modeArea);
-    area.removeFromTop(8);
-    globalRuler.setBounds(area.removeFromTop(148));
-    area.removeFromTop(8);
-    moduleLanes.setBounds(area.removeFromTop(170));
     area.removeFromTop(10);
+    globalRuler.setBounds(area.removeFromTop(126));
+    area.removeFromTop(8);
+    moduleLanes.setBounds(area.removeFromTop(154));
+    area.removeFromTop(8);
 
     auto lowerArea = area;
-    auto dashboardLeft = lowerArea.removeFromLeft((lowerArea.getWidth() - 12) / 2);
-    lowerArea.removeFromLeft(12);
+    auto dashboardLeft = lowerArea.removeFromLeft((lowerArea.getWidth() - 10) / 2);
+    lowerArea.removeFromLeft(10);
     auto sideColumn = lowerArea;
 
     if (workflowMode == "mixer")
     {
         mixerPanel.setBounds(dashboardLeft);
-        transportPanel.setBounds(sideColumn.removeFromTop(226));
-        sideColumn.removeFromTop(10);
-        automationPanel.setBounds(sideColumn.removeFromTop(180));
-        sideColumn.removeFromTop(10);
+        transportPanel.setBounds(sideColumn.removeFromTop(150));
+        sideColumn.removeFromTop(8);
+        automationPanel.setBounds(sideColumn.removeFromTop(150));
+        sideColumn.removeFromTop(8);
         timingInspector.setBounds(sideColumn.removeFromTop(160));
     }
     else if (workflowMode == "graph")
     {
         routeGraphPanel.setBounds(dashboardLeft);
-        routeListPanel.setBounds(sideColumn.removeFromTop(250));
-        sideColumn.removeFromTop(10);
-        transportPanel.setBounds(sideColumn.removeFromTop(226));
-        sideColumn.removeFromTop(10);
+        routeListPanel.setBounds(sideColumn.removeFromTop(190));
+        sideColumn.removeFromTop(8);
+        transportPanel.setBounds(sideColumn.removeFromTop(150));
+        sideColumn.removeFromTop(8);
         timingInspector.setBounds(sideColumn);
     }
     else if (workflowMode == "code")
     {
         codeSurface.setBounds(dashboardLeft);
-        timingInspector.setBounds(sideColumn.removeFromTop(220));
-        sideColumn.removeFromTop(10);
-        transportPanel.setBounds(sideColumn.removeFromTop(226));
-        sideColumn.removeFromTop(10);
-        validationPanel.setBounds(sideColumn.removeFromTop(150));
-        sideColumn.removeFromTop(10);
+        transportPanel.setBounds(sideColumn.removeFromTop(150));
+        sideColumn.removeFromTop(8);
+        timingInspector.setBounds(sideColumn.removeFromTop(170));
+        sideColumn.removeFromTop(8);
         logPanel.setBounds(sideColumn);
     }
     else
     {
-        auto codeArea = dashboardLeft.removeFromTop(juce::roundToInt(static_cast<float>(dashboardLeft.getHeight()) * 0.55f));
-        codeSurface.setBounds(codeArea);
-        dashboardLeft.removeFromTop(10);
-        mixerPanel.setBounds(dashboardLeft);
-
-        transportPanel.setBounds(sideColumn.removeFromTop(226));
-        sideColumn.removeFromTop(10);
-        routeGraphPanel.setBounds(sideColumn.removeFromTop(210));
-        sideColumn.removeFromTop(10);
-        routeListPanel.setBounds(sideColumn.removeFromTop(120));
-        sideColumn.removeFromTop(10);
-        timingInspector.setBounds(sideColumn.removeFromTop(120));
-        sideColumn.removeFromTop(10);
-
-        auto diagnosticsRow = sideColumn;
-        auto validationWidth = juce::roundToInt(static_cast<float>(diagnosticsRow.getWidth()) * 0.40f);
-        validationPanel.setBounds(diagnosticsRow.removeFromLeft(validationWidth));
-        diagnosticsRow.removeFromLeft(10);
-        logPanel.setBounds(diagnosticsRow);
+        codeSurface.setBounds(dashboardLeft);
+        transportPanel.setBounds(sideColumn.removeFromTop(150));
+        sideColumn.removeFromTop(8);
+        timingInspector.setBounds(sideColumn.removeFromTop(170));
+        sideColumn.removeFromTop(8);
+        logPanel.setBounds(sideColumn);
     }
 
     updateWorkflowVisibility();
@@ -467,7 +449,7 @@ void MainComponent::timerCallback()
     if (structuralChanged && ! playbackActive)
         globalRuler.setStructuralState(structuralStateCache);
 
-    if ((clockChanged || moduleChanged || selectionChanged) && ! playbackActive)
+    if (clockChanged || moduleChanged || selectionChanged)
         globalRuler.setSelectedLaneOverlay(selectedModule, selectedClockDomain);
 
     if (moduleChanged)
@@ -576,13 +558,13 @@ void MainComponent::updateWorkflowVisibility()
     const auto code = workflowMode == "code";
 
     codeSurface.setVisible(arrangement || code);
-    mixerPanel.setVisible(arrangement || mixer);
+    mixerPanel.setVisible(mixer);
     automationPanel.setVisible(mixer);
-    routeGraphPanel.setVisible(arrangement || graph);
-    routeListPanel.setVisible(arrangement || graph);
+    routeGraphPanel.setVisible(graph);
+    routeListPanel.setVisible(graph);
     transportPanel.setVisible(true);
     timingInspector.setVisible(true);
-    validationPanel.setVisible(arrangement || code);
+    validationPanel.setVisible(false);
     logPanel.setVisible(arrangement || code);
 
     arrangementModeButton.setToggleState(arrangement, juce::dontSendNotification);

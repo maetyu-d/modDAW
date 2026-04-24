@@ -2,7 +2,7 @@
 
 TransportPanelComponent::TransportPanelComponent()
 {
-    titleLabel.setText("Canonical Transport (sclang)", juce::dontSendNotification);
+    titleLabel.setText("Transport", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     summaryLabel.setJustificationType(juce::Justification::centredLeft);
 
@@ -88,8 +88,8 @@ void TransportPanelComponent::resized()
     auto area = getLocalBounds().reduced(12);
     titleLabel.setBounds(area.removeFromTop(24));
     area.removeFromTop(4);
-    summaryLabel.setBounds(area.removeFromTop(24));
-    area.removeFromTop(12);
+    summaryLabel.setBounds(area.removeFromTop(22));
+    area.removeFromTop(10);
 
     auto topButtons = area.removeFromTop(30);
     auto buttonWidth = (topButtons.getWidth() - 16) / 3;
@@ -103,35 +103,19 @@ void TransportPanelComponent::resized()
     auto lowerButtons = area.removeFromTop(30);
     activateNextBarButton.setBounds(lowerButtons.removeFromLeft(juce::roundToInt(static_cast<float>(lowerButtons.getWidth()) * 0.50f)));
     lowerButtons.removeFromLeft(8);
-    saveProjectButton.setBounds(lowerButtons.removeFromLeft((lowerButtons.getWidth() - 8) / 2));
+    renderMixButton.setBounds(lowerButtons.removeFromLeft((lowerButtons.getWidth() - 8) / 2));
     lowerButtons.removeFromLeft(8);
-    loadProjectButton.setBounds(lowerButtons);
+    saveProjectButton.setBounds(lowerButtons);
 
-    area.removeFromTop(8);
-    auto sceneRow = area.removeFromTop(28);
-    auto sceneButtonWidth = (sceneRow.getWidth() - 24) / 4;
-    sceneNextPhraseButton.setBounds(sceneRow.removeFromLeft(sceneButtonWidth));
-    sceneRow.removeFromLeft(8);
-    sceneAfterCyclesButton.setBounds(sceneRow.removeFromLeft(sceneButtonWidth));
-    sceneRow.removeFromLeft(8);
-    sceneExternalCueButton.setBounds(sceneRow.removeFromLeft(sceneButtonWidth));
-    sceneRow.removeFromLeft(8);
-    externalCueButton.setBounds(sceneRow);
-
-    area.removeFromTop(8);
-    auto performanceRow = area.removeFromTop(28);
-    auto performanceButtonWidth = (performanceRow.getWidth() - 16) / 3;
-    performanceAccentButton.setBounds(performanceRow.removeFromLeft(performanceButtonWidth));
-    performanceRow.removeFromLeft(8);
-    performanceCueButton.setBounds(performanceRow.removeFromLeft(performanceButtonWidth));
-    performanceRow.removeFromLeft(8);
-    performanceLiftButton.setBounds(performanceRow);
-
-    area.removeFromTop(8);
-    auto renderRow = area.removeFromTop(28);
-    renderMixButton.setBounds(renderRow.removeFromLeft((renderRow.getWidth() - 8) / 2));
-    renderRow.removeFromLeft(8);
-    renderStemsButton.setBounds(renderRow);
+    loadProjectButton.setBounds(0, 0, 0, 0);
+    sceneNextPhraseButton.setBounds(0, 0, 0, 0);
+    sceneAfterCyclesButton.setBounds(0, 0, 0, 0);
+    sceneExternalCueButton.setBounds(0, 0, 0, 0);
+    externalCueButton.setBounds(0, 0, 0, 0);
+    performanceAccentButton.setBounds(0, 0, 0, 0);
+    performanceCueButton.setBounds(0, 0, 0, 0);
+    performanceLiftButton.setBounds(0, 0, 0, 0);
+    renderStemsButton.setBounds(0, 0, 0, 0);
 }
 
 void TransportPanelComponent::paint(juce::Graphics& g)
@@ -237,7 +221,10 @@ void TransportPanelComponent::buttonClicked(juce::Button* button)
 
 void TransportPanelComponent::updateSummaryText()
 {
-    auto summary = state.toSummaryString();
+    auto summary = juce::String(state.isPlaying ? "playing" : "stopped")
+                 + " | bar " + juce::String(state.barIndex)
+                 + " beat " + juce::String(state.beatInBar, 2)
+                 + " | " + juce::String(state.tempo, 1) + " bpm";
 
     if (recoveryState.engineOnline)
     {

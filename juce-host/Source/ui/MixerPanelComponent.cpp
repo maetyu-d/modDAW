@@ -2,7 +2,7 @@
 
 MixerPanelComponent::MixerPanelComponent()
 {
-    titleLabel.setText("Mixer / Sends (sclang)", juce::dontSendNotification);
+    titleLabel.setText("Mixer / Sends", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     summaryLabel.setJustificationType(juce::Justification::centredLeft);
 

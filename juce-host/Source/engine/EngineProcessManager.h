@@ -2,21 +2,26 @@
 
 #include <JuceHeader.h>
 #include "AnalysisState.h"
+#include "AudioEngine.h"
 #include "AutomationState.h"
 #include "ClockDomainState.h"
-#include "EngineConnection.h"
+#include "ClockDomainManager.h"
+#include "MixerEngine.h"
 #include "MixerState.h"
+#include "ModuleRegistry.h"
 #include "ModuleState.h"
-#include "RegionState.h"
 #include "RecoveryState.h"
+#include "RegionState.h"
 #include "RenderState.h"
+#include "RoutingGraph.h"
+#include "Scheduler.h"
 #include "RouteState.h"
 #include "StructuralState.h"
-#include "SubprocessHandle.h"
+#include "TransportEngine.h"
 #include "TransportState.h"
 #include "ValidationState.h"
 
-class EngineProcessManager final : private juce::Thread
+class EngineProcessManager final
 {
 public:
     using TransportStateCallback = std::function<void(const TransportState&)>;
@@ -29,7 +34,7 @@ public:
     };
 
     EngineProcessManager();
-    ~EngineProcessManager() override;
+    ~EngineProcessManager();
 
     void start();
     void stop();
@@ -114,71 +119,39 @@ public:
     TransportStateCallback onTransportStateChanged;
 
 private:
-    void run() override;
-
-    void configureCallbacks();
-    void setConnectionState(ConnectionState newState);
+    void initializeInternalState();
+    void applyTransportState(const TransportState& state);
+    void applyClockDomainState(const ClockDomainState& state);
+    void applyModuleState(const ModuleState& state);
+    void applyMixerState(const MixerState& state);
+    void applyRouteState(const RouteState& state);
     void appendLog(const juce::String& line);
-    void handleEnvelope(const MessageEnvelope& envelope);
-    void sendHandshake();
-    void sendPing();
-    void sendTransportRequestState();
-    void sendTransportPlay();
-    void sendTransportStop();
-    void sendClockDomainsRequestState();
-    void sendClockDomainsSetRelation(const juce::String& domainId,
-                                     const juce::String& relationType,
-                                     double phaseOffsetBeats);
-    void sendModulesRequestState();
-    void sendMixerRequestState();
-    void sendRoutesRequestState();
-    void sendRegionsRequestState();
-    void sendAutomationRequestState();
-    void sendAnalysisRequestState();
-    void sendStructuralRequestState();
-    void sendValidationRequestState();
-    void sendRecoveryRequestState();
-    void sendRenderRequestState();
-    void sendRenderFullMix();
-    void sendRenderStems();
-    void sendModulesActivateNextBar(const juce::String& moduleId);
-    void sendModulesUpdateCodeSurfaceNextBar(const juce::String& moduleId,
-                                             const juce::String& surfaceId,
-                                             const juce::String& codeSurface);
-    void sendMixerSetLevel(const juce::String& stripId, double level);
-    void sendMixerSetMuted(const juce::String& stripId, bool muted);
-    void sendMixerAssignGroup(const juce::String& stripId, const juce::String& groupId);
-    void sendMixerSetSendLevel(const juce::String& sendId, double level);
-    void sendMixerSetSendMode(const juce::String& sendId, const juce::String& mode);
-    void sendRoutesCreate(const juce::String& family,
-                          const juce::String& source,
-                          const juce::String& destination,
-                          bool enabled);
-    void sendRoutesDelete(const juce::String& routeId);
-    void sendProjectSave();
-    void sendProjectLoad();
-    void sendModuleFreezeToRegion(const juce::String& moduleId);
-    void sendModuleLiveLinkedRegion(const juce::String& moduleId);
-    void sendRegionMove(const juce::String& regionId, double deltaBeats);
-    void sendRegionTrim(const juce::String& regionId, double deltaBeats);
-    void sendRegionSplit(const juce::String& regionId);
-    void sendRegionDelete(const juce::String& regionId);
-    void sendAutomationAddPoint(const juce::String& laneId, double value);
-    void sendAutomationResetDemo(const juce::String& laneId);
-    void sendStructuralScheduleSceneTransition(const juce::String& quantizationTarget,
-                                               int afterCycles,
-                                               const juce::String& domainId,
-                                               const juce::String& sceneName);
-    void sendStructuralExternalCue(const juce::String& cueName);
-    void sendPerformanceRequestState();
-    void sendPerformanceTriggerMacro(const juce::String& macroId, double value);
-    void cleanupStaleEngineProcesses() const;
-    juce::File resolveEngineLaunchScript() const;
-    juce::StringArray makeLaunchCommand(const juce::File& script) const;
+    void setConnectionState(ConnectionState newState);
+    void bumpTransportRevision();
+    void bumpClockDomainRevision();
+    void bumpModuleRevision();
+    void bumpMixerRevision();
+    void bumpRouteRevision();
+    void bumpRegionRevision();
+    void bumpRecoveryRevision();
+    void bumpRenderRevision();
+    void bumpAutomationRevision();
+    void bumpAnalysisRevision();
+    void bumpStructuralRevision();
+    void bumpValidationRevision();
+    ModuleEntry* findMutableModule(const juce::String& moduleId);
+    MixerStripEntry* findMutableStrip(const juce::String& stripId);
+    MixerSendEntry* findMutableSend(const juce::String& sendId);
+    AutomationLaneEntry* findMutableLane(const juce::String& laneId);
+    RouteEntry* findMutableRoute(const juce::String& routeId);
 
     mutable juce::CriticalSection lock;
-    std::unique_ptr<SubprocessHandle> childProcess;
-    EngineConnection connection;
+    AudioEngine audioEngine;
+    TransportEngine transportEngine;
+    ClockDomainManager clockDomainManager;
+    MixerEngine mixerEngine;
+    ModuleRegistry moduleRegistry;
+    RoutingGraph routingGraph;
     ConnectionState connectionState = ConnectionState::offline;
     TransportState transportState;
     ClockDomainState clockDomainState;
@@ -205,10 +178,6 @@ private:
     std::uint64_t structuralRevision = 0;
     std::uint64_t validationRevision = 0;
     juce::StringArray pendingLogLines;
-    juce::HashMap<juce::String, juce::uint32> lastRateLimitedLogAtMs;
-    juce::uint32 lastPingSentAtMs = 0;
-    juce::uint32 lastHandshakeSentAtMs = 0;
-    juce::String childOutputBuffer;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EngineProcessManager)
 };

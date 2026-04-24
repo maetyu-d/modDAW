@@ -2,7 +2,7 @@
 
 CodeSurfaceComponent::CodeSurfaceComponent()
 {
-    titleLabel.setText("Code Surface (sclang authority)", juce::dontSendNotification);
+    titleLabel.setText("Code", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     titleLabel.setFont(juce::FontOptions(14.0f, juce::Font::bold));
 
@@ -57,10 +57,10 @@ void CodeSurfaceComponent::resized()
 {
     auto area = getLocalBounds().reduced(12);
     auto top = area.removeFromTop(24);
-    titleLabel.setBounds(top.removeFromLeft(210));
-    submitButton.setBounds(top.removeFromRight(160));
+    titleLabel.setBounds(top.removeFromLeft(120));
+    submitButton.setBounds(top.removeFromRight(132));
     top.removeFromRight(8);
-    surfaceSelector.setBounds(top.removeFromRight(150));
+    surfaceSelector.setBounds(top.removeFromRight(132));
     area.removeFromTop(6);
     moduleLabel.setBounds(area.removeFromTop(20));
     statusLabel.setBounds(area.removeFromTop(18));
@@ -191,23 +191,23 @@ void CodeSurfaceComponent::updateStatusText()
 {
     if (! hasSelectedModule)
     {
-        statusLabel.setText("Select a lane to edit one engine-owned code surface.", juce::dontSendNotification);
+        statusLabel.setText("Select a lane to edit.", juce::dontSendNotification);
         return;
     }
 
     const auto* surface = selectedSurface();
-    auto status = "surface " + selectedSurfaceId + " | state: "
+    auto status = selectedSurfaceId + " | "
                 + (surface != nullptr ? surface->state : selectedModule.codeSurfaceState);
 
     const auto pendingBar = surface != nullptr ? surface->pendingCodeSwapBarIndex : selectedModule.pendingCodeSwapBarIndex;
     if (pendingBar > 0)
-        status += " | pending bar " + juce::String(pendingBar);
+        status += " | next bar " + juce::String(pendingBar);
 
     if (surface != nullptr)
         status += " | rev " + juce::String(surface->revision);
 
     if (editorDirty)
-        status += " | local edits not yet submitted";
+        status += " | edited";
 
     const auto diagnostic = surface != nullptr ? surface->diagnostic : selectedModule.lastCodeEvalMessage;
     if (diagnostic.isNotEmpty())

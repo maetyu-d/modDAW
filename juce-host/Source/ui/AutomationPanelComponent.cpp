@@ -2,7 +2,7 @@
 
 AutomationPanelComponent::AutomationPanelComponent()
 {
-    titleLabel.setText("Automation (sclang)", juce::dontSendNotification);
+    titleLabel.setText("Automation", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     summaryLabel.setJustificationType(juce::Justification::centredRight);
 

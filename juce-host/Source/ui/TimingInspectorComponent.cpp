@@ -107,9 +107,10 @@ void TimingInspectorComponent::refreshText()
     const auto beatsPerBar = static_cast<double>(juce::jmax(1, transport.meterNumerator));
     const auto globalBeatAtNextBar = static_cast<double>(transport.barIndex) * beatsPerBar;
     const auto beatsUntilNextBar = juce::jmax(0.0, globalBeatAtNextBar - transport.beatPosition);
-    const auto selectedDomainBeatAtCurrentGlobalBeat = domain.localBeatPosition;
-    const auto selectedDomainBeatAtNextBar = domain.phaseOffsetBeats + (globalBeatAtNextBar * domain.ratioToParent);
-    const auto selectedDomainDeltaToNextBar = selectedDomainBeatAtNextBar - selectedDomainBeatAtCurrentGlobalBeat;
+    const auto selectedDomainDeltaToNextBar = domain.kind == "free"
+        ? 0.0
+        : ((globalBeatAtNextBar - transport.beatPosition) * juce::jmax(0.001, domain.ratioToParent)
+           * (static_cast<double>(juce::jmax(1, domain.meterDenominator)) / 4.0));
 
     juce::StringArray lines;
     lines.add("module: " + module.displayName + " | " + module.lifecycleState + " | " + module.behaviourType);
@@ -121,6 +122,7 @@ void TimingInspectorComponent::refreshText()
               + " | absolute " + formatDouble(transport.beatPosition, 3));
     lines.add("clock: " + domain.displayName
               + " | relation " + (domain.relationType.isNotEmpty() ? domain.relationType : "tempoShared")
+              + " | meter " + juce::String(domain.meterNumerator) + "/" + juce::String(domain.meterDenominator)
               + " | ratio " + formatDouble(domain.ratioToParent, 3)
               + " | phase " + formatDouble(domain.phaseOffsetBeats, 3));
     if (domain.relationDescription.isNotEmpty())
@@ -128,12 +130,17 @@ void TimingInspectorComponent::refreshText()
     lines.add("local: bar " + juce::String(domain.localBarIndex)
               + " | beat " + formatDouble(domain.localBeatInBar, 3)
               + " | absolute " + formatDouble(domain.localBeatPosition, 3));
+    lines.add("global beat anchor: " + formatDouble(domain.absoluteBeatPosition, 3)
+              + " | bar length " + formatDouble(domain.barLengthBeats, 3));
     lines.add("phrase: " + juce::String(domain.phraseLengthBars) + " bars"
               + " | index " + juce::String(domain.phraseIndex)
               + " | phase " + formatDouble(domain.phrasePhase, 3)
               + " | next beat " + formatDouble(domain.nextPhraseBeat, 3));
-    lines.add("next global bar: in " + formatDouble(beatsUntilNextBar, 3)
-              + " beats | local delta " + formatDouble(selectedDomainDeltaToNextBar, 3));
+    if (domain.kind == "free")
+        lines.add("next global bar: global in " + formatDouble(beatsUntilNextBar, 3) + " beats | local delta independent");
+    else
+        lines.add("next global bar: in " + formatDouble(beatsUntilNextBar, 3)
+                  + " beats | local delta " + formatDouble(selectedDomainDeltaToNextBar, 3));
 
     if (const auto* pending = structural.nextPendingTransition())
     {
@@ -182,7 +189,7 @@ void TimingInspectorComponent::refreshRelationEditor()
         return;
     }
 
-    const bool editable = domain.kind != "global";
+    const bool editable = domain.kind != "global" && domain.kind != "free";
     relationSelector.setEnabled(editable);
     phaseOffsetEditor.setEnabled(editable);
     applyRelationButton.setEnabled(editable);

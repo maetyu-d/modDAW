@@ -55,14 +55,26 @@ target_sources(modular_sc_daw PRIVATE
     Source/engine/EngineConnection.cpp
     Source/engine/AnalysisState.h
     Source/engine/AnalysisState.cpp
+    Source/engine/AudioEngine.h
+    Source/engine/AudioEngine.cpp
+    Source/engine/BehaviourParser.h
+    Source/engine/BehaviourParser.cpp
     Source/engine/MessageEnvelope.h
     Source/engine/MessageEnvelope.cpp
     Source/engine/MessageParser.h
     Source/engine/MessageParser.cpp
     Source/engine/ClockDomainState.h
     Source/engine/ClockDomainState.cpp
+    Source/engine/ClockDomain.h
+    Source/engine/ClockDomain.cpp
+    Source/engine/ClockDomainManager.h
+    Source/engine/ClockDomainManager.cpp
+    Source/engine/MixerEngine.h
+    Source/engine/MixerEngine.cpp
     Source/engine/MixerState.h
     Source/engine/MixerState.cpp
+    Source/engine/RoutingGraph.h
+    Source/engine/RoutingGraph.cpp
     Source/engine/RouteState.h
     Source/engine/RouteState.cpp
     Source/engine/StructuralState.h
@@ -73,12 +85,19 @@ target_sources(modular_sc_daw PRIVATE
     Source/engine/RecoveryState.cpp
     Source/engine/RenderState.h
     Source/engine/RenderState.cpp
+    Source/engine/Scheduler.h
+    Source/engine/Scheduler.cpp
+    Source/engine/Module.h
+    Source/engine/ModuleRegistry.h
+    Source/engine/ModuleRegistry.cpp
     Source/engine/ModuleState.h
     Source/engine/ModuleState.cpp
     Source/engine/SubprocessHandle.h
     Source/engine/SubprocessHandle.cpp
     Source/engine/TransportState.h
     Source/engine/TransportState.cpp
+    Source/engine/TransportEngine.h
+    Source/engine/TransportEngine.cpp
     Source/engine/ValidationState.h
     Source/engine/ValidationState.cpp
     Source/util/Ids.h
@@ -93,6 +112,12 @@ target_sources(modular_sc_daw PRIVATE
     Source/ui/TransportPanelComponent.cpp
     Source/ui/ValidationPanelComponent.h
     Source/ui/ValidationPanelComponent.cpp
+    Source/modules/DemoToneModule.h
+    Source/modules/DemoToneModule.cpp
+    Source/modules/PatternModule.h
+    Source/modules/PatternModule.cpp
+    Source/modules/DroneModule.h
+    Source/modules/DroneModule.cpp
 )
 
 target_compile_definitions(modular_sc_daw PRIVATE
@@ -103,6 +128,7 @@ target_compile_definitions(modular_sc_daw PRIVATE
 
 target_link_libraries(modular_sc_daw PRIVATE
     juce::juce_gui_extra
+    juce::juce_audio_utils
     juce::juce_recommended_config_flags
     juce::juce_recommended_lto_flags
     juce::juce_recommended_warning_flags

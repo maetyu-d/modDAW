@@ -2,7 +2,7 @@
 
 ClockDomainsPanelComponent::ClockDomainsPanelComponent()
 {
-    titleLabel.setText("Clock Domains (sclang)", juce::dontSendNotification);
+    titleLabel.setText("Clock Domains", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     summaryLabel.setJustificationType(juce::Justification::centredLeft);
 
@@ -57,13 +57,15 @@ void ClockDomainsPanelComponent::refreshText()
         lines.add("  kind=" + domain.kind
                   + " parent=" + (domain.parentId.isNotEmpty() ? domain.parentId : "none")
                   + " relation=" + (domain.relationType.isNotEmpty() ? domain.relationType : "tempoShared")
+                  + " meter=" + juce::String(domain.meterNumerator) + "/" + juce::String(domain.meterDenominator)
                   + " ratio=" + juce::String(domain.ratioToParent, 3)
                   + " phaseOffset=" + juce::String(domain.phaseOffsetBeats, 3));
         if (domain.relationDescription.isNotEmpty())
             lines.add("  " + domain.relationDescription);
         lines.add("  localBar=" + juce::String(domain.localBarIndex)
                   + " localBeat=" + juce::String(domain.localBeatInBar, 2)
-                  + " absoluteBeat=" + juce::String(domain.localBeatPosition, 2));
+                  + " localAbsolute=" + juce::String(domain.localBeatPosition, 2)
+                  + " globalAnchor=" + juce::String(domain.absoluteBeatPosition, 2));
         lines.add("  phraseBars=" + juce::String(domain.phraseLengthBars)
                   + " phraseIndex=" + juce::String(domain.phraseIndex)
                   + " phrasePhase=" + juce::String(domain.phrasePhase, 3)

@@ -39,7 +39,7 @@ void RouteGraphPanelComponent::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xfff3f5f7));
     g.setFont(juce::FontOptions(15.0f, juce::Font::bold));
-    g.drawText("Route Graph (sclang)", header.removeFromLeft(210.0f).toNearestInt(), juce::Justification::centredLeft);
+    g.drawText("Route Graph", header.removeFromLeft(210.0f).toNearestInt(), juce::Justification::centredLeft);
 
     drawFamilyLegend(g, header);
 
@@ -128,7 +128,7 @@ void RouteGraphPanelComponent::mouseUp(const juce::MouseEvent& event)
 
         if (onCreateRoute)
         {
-            statusText = "Creating " + source->family + " route via sclang.";
+            statusText = "Creating " + source->family + " route.";
             onCreateRoute(source->family, source->id, clickedPort->endpoint.id, true);
         }
 

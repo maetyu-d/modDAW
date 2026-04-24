@@ -33,6 +33,7 @@ juce::String ClockDomainEntry::toSummaryString() const
     return displayName + " | " + kind
         + " | parent " + parentText
         + " | relation " + (relationType.isNotEmpty() ? relationType : "tempoShared")
+        + " | meter " + juce::String(meterNumerator) + "/" + juce::String(meterDenominator)
         + " | ratio " + juce::String(ratioToParent, 3)
         + " | phrase " + juce::String(phraseLengthBars) + " bars"
         + " | beat " + juce::String(localBeatPosition, 2);
@@ -65,6 +66,8 @@ ClockDomainState ClockDomainState::fromPayload(const juce::var& payload)
         entry.displayName = readString(values, "displayName");
         entry.relationType = readString(values, "relationType");
         entry.relationDescription = readString(values, "relationDescription");
+        entry.meterNumerator = readInt(values, "meterNumerator", entry.meterNumerator);
+        entry.meterDenominator = readInt(values, "meterDenominator", entry.meterDenominator);
         entry.ratioToParent = readDouble(values, "ratioToParent", entry.ratioToParent);
         entry.phaseOffsetBeats = readDouble(values, "phaseOffsetBeats", entry.phaseOffsetBeats);
         entry.phraseLengthBars = readInt(values, "phraseLengthBars", entry.phraseLengthBars);
@@ -72,6 +75,8 @@ ClockDomainState ClockDomainState::fromPayload(const juce::var& payload)
         entry.phraseIndex = readInt(values, "phraseIndex", entry.phraseIndex);
         entry.phrasePhase = readDouble(values, "phrasePhase", entry.phrasePhase);
         entry.nextPhraseBeat = readDouble(values, "nextPhraseBeat", entry.nextPhraseBeat);
+        entry.absoluteBeatPosition = readDouble(values, "absoluteBeatPosition", entry.absoluteBeatPosition);
+        entry.barLengthBeats = readDouble(values, "barLengthBeats", entry.barLengthBeats);
         entry.localBeatPosition = readDouble(values, "localBeatPosition", entry.localBeatPosition);
         entry.localBarIndex = readInt(values, "localBarIndex", entry.localBarIndex);
         entry.localBeatInBar = readDouble(values, "localBeatInBar", entry.localBeatInBar);

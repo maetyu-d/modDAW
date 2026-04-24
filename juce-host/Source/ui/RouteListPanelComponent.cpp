@@ -10,7 +10,7 @@ juce::String selectorTextForEndpoint(const RouteEndpointEntry& endpoint)
 
 RouteListPanelComponent::RouteListPanelComponent()
 {
-    titleLabel.setText("Explicit Routes (sclang)", juce::dontSendNotification);
+    titleLabel.setText("Explicit Routes", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     summaryLabel.setJustificationType(juce::Justification::centredRight);
 

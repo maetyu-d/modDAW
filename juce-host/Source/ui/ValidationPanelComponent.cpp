@@ -2,7 +2,7 @@
 
 ValidationPanelComponent::ValidationPanelComponent()
 {
-    titleLabel.setText("Validation (sclang)", juce::dontSendNotification);
+    titleLabel.setText("Validation", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     summaryLabel.setJustificationType(juce::Justification::centredLeft);
 

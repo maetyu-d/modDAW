@@ -1,5 +1,7 @@
 # Milestones
 
+## Legacy Prototype Track
+
 - `M1` host + engine handshake
 - `M2` canonical transport in `sclang`
 - `M3` global ruler
@@ -31,48 +33,176 @@
 - `M29` offline render and stem export
 - `M30` UI consolidation and workflow pass
 
+## JUCE-Native Migration Track
+
+- `J1` remove runtime SC process dependency
+- `J2` JUCE-native transport engine
+- `J3` JUCE-native clock-domain engine
+- `J4` JUCE-native module model
+- `J5` JUCE-native audio engine
+- `J6` JUCE-native routing and mixer
+- `J7` JUCE-native scheduler and quantised actions
+- `J8` replace SC code surfaces with JUCE-native editable behaviours
+- `J9` persistence migration
+- `J10` clean docs and retire legacy SC runtime files
+
 ## Current Progress
 
-`M1` through `M30` are implemented in this repository scaffold.
+- Legacy prototype milestones `M1` through `M30` exist in prototype form.
+- Migration milestones `J1`, `J2`, `J3`, `J4`, `J5`, `J6`, `J7`, and `J8` are implemented.
+- The app now launches without requiring `sclang` or `scsynth` at runtime.
+- The current UI is still largely backed by a JUCE compatibility layer rather than the final native engine subsystems.
+- Global transport playback and ruler timing now come from a JUCE-native `TransportEngine`.
+- Clock domains now come from a JUCE-native `ClockDomainManager`.
+- Modules now come from a JUCE-native `ModuleRegistry`.
+- Audio now comes from a JUCE-native `AudioEngine`.
+- Mixer and routes now come from JUCE-native `MixerEngine` and `RoutingGraph` layers.
+- Quantised next-bar actions now come from a JUCE-native `Scheduler`.
+- Code surfaces now compile into native module behaviour blocks instead of remaining passive text.
 
-Current stable runtime note:
+## J1 Scope
 
-- repeated play/activate-next-bar/stop cycles are stabilized with engine-side throttling and minimal host redraw
-- startup is cold and deterministic
-- the host remains a renderer/requester rather than a live high-frequency mirror of engine internals
+`J1` intentionally does only this:
 
-`M13` introduces an engine-owned route list with audio and control route families. JUCE displays routes and requests route creation/deletion, while `sclang` validates endpoints and remains the route authority.
+- removes child-process launch of the SuperCollider runtime
+- removes the runtime requirement for local SC installation
+- replaces external engine status with internal JUCE engine status
+- keeps the UI alive by serving placeholder in-memory state through the existing typed state model
 
-`M14` introduces a minimal persistent project snapshot. JUCE can request save/load, but `sclang` serializes declarative project data and reconstructs runtime state from that snapshot.
+## Still Deferred After J1
 
-`M15` introduces frozen timeline regions. JUCE can request a per-module freeze, while `sclang` creates the canonical region and replays the frozen demo material through `scsynth`.
+- transport authority migration
+- clock-domain execution migration
+- native module execution
+- native audio generation
+- native routing and mixer execution
+- native scheduler authority
+- native behaviour/code-surface execution
+- native persistence
+- retirement of legacy SC source trees and old protocol docs
 
-`M16` introduces basic arrangement editing for frozen regions: move, trim, split, and delete. Edits operate on projected/frozen region material and do not rewrite the underlying module clock-domain semantics.
+## J2 Scope
 
-`M17` introduces a minimal automation lane for `Kick Pulse` mixer level. `sclang` owns breakpoint data, interpolation, and playback application; JUCE renders and requests point changes.
+`J2` adds the first real native subsystem:
 
-`M18` introduces multiple code surfaces per module. `sclang` owns surface-specific eval, diagnostics, active revisions, and fallback behavior on failure.
+- `TransportEngine`
+- JUCE-owned play / stop
+- JUCE-owned tempo and meter
+- JUCE-owned beat / bar / phase progression
+- transport revision updates that drive the ruler and transport UI without any SC runtime
 
-`M19` introduces a hardcoded structural conductor module. `sclang` emits phrase-boundary directives with section, density, sync cue, phrase reset, orchestration, and target-module data; JUCE renders a structural lane and inspector details from engine state.
+## Still Deferred After J2
 
-`M20` introduces a route graph view over the same engine-owned route list model. JUCE renders modules/ports/connections, allows visual create/delete gestures, shows the required route families, and still sends all route mutations through `sclang` validation.
+- native module execution
+- native audio generation
+- native routing and mixer execution
+- native scheduler authority
+- native behaviour/code-surface execution
+- native persistence
+- retirement of legacy SC source trees and old protocol docs
 
-`M21` introduces richer engine-owned timing relations for derived clock domains: `tempoShared`, `meterShared`, `phaseShared`, `phaseOffset`, and `hardSync`. JUCE can request relation changes from the timing inspector, but `sclang` validates and applies or rejects them.
+## J3 Scope
 
-`M22` introduces phrase lengths on clock domains and phrase-level structural scheduling. JUCE can request demo scene transitions for `nextPhrase`, `afterNCycles`, or `externalCue`; `sclang` computes and owns the pending boundary and emits the applied structural directive.
+`J3` adds the next native subsystem:
 
-`M23` introduces a minimal group/bus layer. `sclang` owns a demo `Drum Group`, module-to-group assignments, group level/mute, and effective module gain through module strip, group bus, and master.
+- `ClockDomain`
+- `ClockDomainManager`
+- JUCE-owned global, local, derived, and free-running demo domains
+- relation editing that updates native domain state
+- selected-lane overlay timing driven from native clock-domain computation
 
-`M24` introduces a minimal sends/returns layer. `sclang` owns demo send definitions, pre/post send mode, send level, and a shared `Space Return` FX path; JUCE displays and requests changes without owning aux signal flow.
+## Still Deferred After J3
 
-`M25` introduces explicit region identity. Frozen regions are detached material, while live-linked regions are projections of module behaviour; both are engine-owned and have distinct UI rendering and edit policies.
+- native module execution
+- native audio generation
+- native routing and mixer execution
+- native scheduler authority
+- native behaviour/code-surface execution
+- native persistence
+- retirement of legacy SC source trees and old protocol docs
 
-`M26` introduces minimal performance input. JUCE maps keyboard/buttons to explicit performance macros, but sends them to `sclang` as requests; the engine owns kick accents, external scene cues, and density-lift structural directives.
+## J4 Scope
 
-`M27` introduces a minimal analysis/feedback module. `sclang` owns a `Kick Listener` analysis module that derives envelope, onset, density, and brightness proxy data from kick trigger events, emits `analysis.state`, updates module runtime feedback, and exposes an inspectable control route to `Texture Drift`.
+`J4` adds the next native subsystem:
 
-`M28` introduces minimal recovery containment. Failed code-surface eval remains isolated to the surface, `sclang` tracks unsaved project state, writes a declarative recovery autosave after project mutations, can rehydrate from that autosave after interruption, and emits `engine.recoveryState` for JUCE to display.
+- `Module`
+- `ModuleRegistry`
+- explicit demo module classes
+- lifecycle state changes without SC
+- native timing attachment per module
+- native code-surface ownership for the current prototype UI
 
-`M29` introduces engine-owned offline render packages. JUCE can request a full-mix render or per-module stem export, but `sclang` reconstructs the render range from canonical tempo, meter, regions, mixer state, and module state, then writes deterministic JSON render artifacts under `sc-engine/renders/`.
+## Still Deferred After J4
 
-`M30` introduces a small workflow consolidation pass. JUCE now has arrangement, mixer, graph, and code modes plus shortcuts for mode switching, render, performance input, and save; these modes reorganize existing engine-owned views without moving musical authority into the host.
+- native routing and mixer execution
+- native scheduler authority
+- native behaviour/code-surface parsing beyond the current placeholder text model
+- native persistence
+- retirement of legacy SC source trees and old protocol docs
+
+## J5 Scope
+
+`J5` adds the next native subsystem:
+
+- `AudioEngine`
+- JUCE audio callback output
+- transport-following demo tone output
+- free-running drone output
+- audio readiness tracked inside the host runtime
+
+## Still Deferred After J5
+
+- native scheduler authority
+- native behaviour/code-surface parsing beyond the current placeholder text model
+- native persistence
+- retirement of legacy SC source trees and old protocol docs
+
+## J6 Scope
+
+`J6` adds the next native subsystems:
+
+- `MixerEngine`
+- `RoutingGraph`
+- mixer strip level and mute applied to native audio
+- group/master gain applied to native audio
+- route creation/deletion validated natively
+- route enablement gates audible module output
+
+## Still Deferred After J6
+
+- native scheduler authority beyond the current transport/module prototype
+- native behaviour/code-surface parsing beyond the current placeholder text model
+- native persistence
+- retirement of legacy SC source trees and old protocol docs
+
+## J7 Scope
+
+`J7` adds the next native subsystem:
+
+- `Scheduler`
+- JUCE-owned quantised boundary resolution
+- immediate, next beat, next bar, and next phrase policies in the runtime scheduler API
+- next-bar module activation through native scheduling rather than per-module transport polling
+
+## Still Deferred After J7
+
+- richer UI exposure for policies beyond next bar
+- native persistence
+- retirement of legacy SC source trees and old protocol docs
+
+## J8 Scope
+
+`J8` adds the next native subsystem:
+
+- `BehaviourParser`
+- parseable native behaviour surfaces
+- safe rejection of invalid edits
+- keep last valid behaviour active on parse failure
+- behaviour parameters now affect native audio output
+
+## Still Deferred After J8
+
+- larger scripting language support
+- richer per-module processors
+- native persistence
+- retirement of legacy SC source trees and old protocol docs

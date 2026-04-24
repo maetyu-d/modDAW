@@ -3,6 +3,11 @@
 namespace
 {
 constexpr float headerHeight = 22.0f;
+
+double beatUnitScale(const ClockDomainEntry& domain)
+{
+    return static_cast<double>(juce::jmax(1, domain.meterDenominator)) / 4.0;
+}
 }
 
 GlobalRulerComponent::GlobalRulerComponent()
@@ -55,7 +60,7 @@ void GlobalRulerComponent::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff8f99a5));
     g.setFont(juce::FontOptions(12.0f));
-    g.drawText("Engine-authored timing", header.removeFromRight(220).toNearestInt(), juce::Justification::centredRight);
+    g.drawText("TransportEngine timing", header.removeFromRight(220).toNearestInt(), juce::Justification::centredRight);
 
     g.setColour(juce::Colour(0xff101419));
     g.fillRoundedRectangle(rulerArea, 6.0f);
@@ -87,6 +92,61 @@ void GlobalRulerComponent::paint(juce::Graphics& g)
                    + " | " + juce::String(state.isPlaying ? "playing" : "stopped"),
                juce::Rectangle<float>(rulerArea.getX() + 8.0f, rulerArea.getBottom() - 24.0f, rulerArea.getWidth() - 16.0f, 18.0f).toNearestInt(),
                juce::Justification::bottomLeft);
+
+    if (! hasSelectedOverlay)
+        return;
+
+    auto overlayArea = rulerArea.reduced(8.0f, 0.0f).withY(rulerArea.getBottom() - 42.0f).withHeight(28.0f);
+    const auto overlayColour = overlayClockDomain.kind == "free" ? juce::Colour(0xff22413a)
+                              : overlayClockDomain.kind == "local" ? juce::Colour(0xff213746)
+                              : juce::Colour(0xff173b32);
+
+    g.setColour(overlayColour.withAlpha(0.82f));
+    g.fillRoundedRectangle(overlayArea, 5.0f);
+
+    g.setColour(juce::Colour(0xff9ea7b3));
+    g.setFont(juce::FontOptions(11.5f, juce::Font::bold));
+    g.drawText("Overlay: " + overlayModule.displayName + " @ " + overlayClockDomain.displayName,
+               overlayArea.removeFromTop(12.0f).reduced(6.0f, -1.0f).toNearestInt(),
+               juce::Justification::centredLeft);
+
+    auto markerArea = overlayArea.reduced(4.0f, 2.0f);
+    const auto endBeat = startBeat + visibleBeats;
+
+    if (overlayClockDomain.kind == "free")
+    {
+        const auto barLength = juce::jmax(1.0, overlayClockDomain.barLengthBeats);
+        const auto phase = std::fmod(overlayClockDomain.absoluteBeatPosition, barLength);
+        for (int step = -2; step < 6; ++step)
+        {
+            const auto beat = currentBeat + (static_cast<double>(step) * barLength) - phase;
+            const auto x = beatToX(beat - startBeat, markerArea, visibleBeats);
+            g.setColour(juce::Colour(0xff6ee7b7).withAlpha(step == 0 ? 0.95f : 0.55f));
+            g.drawVerticalLine(static_cast<int>(x), markerArea.getY(), markerArea.getBottom());
+        }
+        return;
+    }
+
+    const auto rate = juce::jmax(0.001, overlayClockDomain.ratioToParent) * beatUnitScale(overlayClockDomain);
+    const auto localStartBeat = startBeat * rate + overlayClockDomain.phaseOffsetBeats;
+    const auto localEndBeat = endBeat * rate + overlayClockDomain.phaseOffsetBeats;
+    const auto firstMarker = static_cast<int>(std::floor(localStartBeat)) - 1;
+    const auto lastMarker = static_cast<int>(std::ceil(localEndBeat)) + 1;
+
+    for (int localBeatIndex = firstMarker; localBeatIndex <= lastMarker; ++localBeatIndex)
+    {
+        const auto globalBeat = (static_cast<double>(localBeatIndex) - overlayClockDomain.phaseOffsetBeats) / rate;
+        if (globalBeat < startBeat || globalBeat > endBeat)
+            continue;
+
+        const auto x = beatToX(globalBeat - startBeat, markerArea, visibleBeats);
+        const auto beatInBarIndex = ((localBeatIndex % juce::jmax(1, overlayClockDomain.meterNumerator))
+                                     + juce::jmax(1, overlayClockDomain.meterNumerator))
+                                    % juce::jmax(1, overlayClockDomain.meterNumerator);
+        const bool isBarBoundary = beatInBarIndex == 0;
+        g.setColour((isBarBoundary ? juce::Colour(0xff34d399) : juce::Colour(0xff4fd1c5)).withAlpha(isBarBoundary ? 0.95f : 0.55f));
+        g.drawVerticalLine(static_cast<int>(x), markerArea.getY(), markerArea.getBottom());
+    }
 }
 
 float GlobalRulerComponent::beatToX(double beatOffset, juce::Rectangle<float> bounds, double visibleBeats) const
