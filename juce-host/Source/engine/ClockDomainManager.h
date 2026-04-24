@@ -13,6 +13,7 @@ public:
 
     void setStateCallback(StateCallback callback);
     void initialiseDemoDomains();
+    void initialiseFromState(const ClockDomainState& state);
     void reset();
     void setTransportState(const TransportState& state);
     bool updateRelation(const juce::String& domainId, const juce::String& relationType, double phaseOffsetBeats);

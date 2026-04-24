@@ -13,6 +13,7 @@ public:
 
     void configure(double tempo, int meterNumerator, int meterDenominator);
     void setStateCallback(StateCallback callback);
+    void setState(const TransportState& newState);
 
     void startPlayback();
     void stopPlayback();

@@ -101,13 +101,15 @@ void TransportPanelComponent::resized()
 
     area.removeFromTop(8);
     auto lowerButtons = area.removeFromTop(30);
-    activateNextBarButton.setBounds(lowerButtons.removeFromLeft(juce::roundToInt(static_cast<float>(lowerButtons.getWidth()) * 0.50f)));
+    auto smallButtonWidth = (lowerButtons.getWidth() - 24) / 4;
+    activateNextBarButton.setBounds(lowerButtons.removeFromLeft(smallButtonWidth));
     lowerButtons.removeFromLeft(8);
-    renderMixButton.setBounds(lowerButtons.removeFromLeft((lowerButtons.getWidth() - 8) / 2));
+    renderMixButton.setBounds(lowerButtons.removeFromLeft(smallButtonWidth));
     lowerButtons.removeFromLeft(8);
-    saveProjectButton.setBounds(lowerButtons);
+    saveProjectButton.setBounds(lowerButtons.removeFromLeft(smallButtonWidth));
+    lowerButtons.removeFromLeft(8);
+    loadProjectButton.setBounds(lowerButtons);
 
-    loadProjectButton.setBounds(0, 0, 0, 0);
     sceneNextPhraseButton.setBounds(0, 0, 0, 0);
     sceneAfterCyclesButton.setBounds(0, 0, 0, 0);
     sceneExternalCueButton.setBounds(0, 0, 0, 0);

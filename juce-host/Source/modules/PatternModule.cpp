@@ -67,6 +67,32 @@ void PatternModule::activateNow(const juce::String& boundaryLabel)
     state.lastCodeEvalMessage = "activated on " + boundaryLabel;
 }
 
+bool PatternModule::loadState(const ModuleEntry& entry, juce::String& errorText)
+{
+    auto loadedState = entry;
+    Behaviour behaviour = activeBehaviour;
+
+    for (const auto& surface : loadedState.codeSurfaces)
+    {
+        juce::String diagnostic;
+        if (surface.surfaceId == "pattern" || surface.surfaceId == "init")
+        {
+            auto result = parseQueuedSurface(surface.surfaceId, surface.code, behaviour, diagnostic);
+            if (! result.success)
+            {
+                errorText = diagnostic;
+                return false;
+            }
+        }
+    }
+
+    state = loadedState;
+    activeBehaviour = behaviour;
+    pendingBehaviour = behaviour;
+    publishBehaviour();
+    return true;
+}
+
 Module::QueueResult PatternModule::queueSurfaceUpdate(const juce::String& surfaceId,
                                                       const juce::String& codeText,
                                                       const juce::String& boundaryLabel,

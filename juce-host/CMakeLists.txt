@@ -51,18 +51,12 @@ target_sources(modular_sc_daw PRIVATE
     Source/engine/EngineProcessManager.cpp
     Source/engine/AutomationState.h
     Source/engine/AutomationState.cpp
-    Source/engine/EngineConnection.h
-    Source/engine/EngineConnection.cpp
     Source/engine/AnalysisState.h
     Source/engine/AnalysisState.cpp
     Source/engine/AudioEngine.h
     Source/engine/AudioEngine.cpp
     Source/engine/BehaviourParser.h
     Source/engine/BehaviourParser.cpp
-    Source/engine/MessageEnvelope.h
-    Source/engine/MessageEnvelope.cpp
-    Source/engine/MessageParser.h
-    Source/engine/MessageParser.cpp
     Source/engine/ClockDomainState.h
     Source/engine/ClockDomainState.cpp
     Source/engine/ClockDomain.h
@@ -90,17 +84,16 @@ target_sources(modular_sc_daw PRIVATE
     Source/engine/Module.h
     Source/engine/ModuleRegistry.h
     Source/engine/ModuleRegistry.cpp
+    Source/engine/ProjectState.h
+    Source/engine/ProjectState.cpp
     Source/engine/ModuleState.h
     Source/engine/ModuleState.cpp
-    Source/engine/SubprocessHandle.h
-    Source/engine/SubprocessHandle.cpp
     Source/engine/TransportState.h
     Source/engine/TransportState.cpp
     Source/engine/TransportEngine.h
     Source/engine/TransportEngine.cpp
     Source/engine/ValidationState.h
     Source/engine/ValidationState.cpp
-    Source/util/Ids.h
     Source/util/TimeUtils.h
     Source/ui/ClockDomainsPanelComponent.h
     Source/ui/ClockDomainsPanelComponent.cpp

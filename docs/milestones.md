@@ -49,9 +49,9 @@
 ## Current Progress
 
 - Legacy prototype milestones `M1` through `M30` exist in prototype form.
-- Migration milestones `J1`, `J2`, `J3`, `J4`, `J5`, `J6`, `J7`, and `J8` are implemented.
+- Migration milestones `J1` through `J10` are implemented.
 - The app now launches without requiring `sclang` or `scsynth` at runtime.
-- The current UI is still largely backed by a JUCE compatibility layer rather than the final native engine subsystems.
+- The current UI is backed by JUCE-native engine subsystems for transport, clocks, modules, audio, routing, mixer, scheduling, and persistence.
 - Global transport playback and ruler timing now come from a JUCE-native `TransportEngine`.
 - Clock domains now come from a JUCE-native `ClockDomainManager`.
 - Modules now come from a JUCE-native `ModuleRegistry`.
@@ -59,6 +59,8 @@
 - Mixer and routes now come from JUCE-native `MixerEngine` and `RoutingGraph` layers.
 - Quantised next-bar actions now come from a JUCE-native `Scheduler`.
 - Code surfaces now compile into native module behaviour blocks instead of remaining passive text.
+- Project save/load now restores JUCE-native runtime state from disk.
+- Legacy SC runtime files and docs are retired.
 
 ## J1 Scope
 
@@ -200,9 +202,25 @@
 - keep last valid behaviour active on parse failure
 - behaviour parameters now affect native audio output
 
-## Still Deferred After J8
+## J9 Scope
 
-- larger scripting language support
-- richer per-module processors
-- native persistence
-- retirement of legacy SC source trees and old protocol docs
+`J9` adds:
+
+- JUCE-native project snapshot save/load
+- runtime rehydration for transport, clock domains, modules, mixer, routes, regions, automation, and structural state
+- default saved project restore on launch
+
+## J10 Scope
+
+`J10` finishes the migration:
+
+- README and architecture docs now describe the JUCE-native system
+- protocol docs are rewritten as internal engine contracts rather than SC IPC
+- legacy SuperCollider runtime files are removed from the repo
+- dead IPC source files are removed from the build graph
+
+## Remaining Deferred Work
+
+- richer scripting than the current minimal behaviour parser
+- more advanced DSP and module processor variety
+- broader workflow polish beyond the migration close-out

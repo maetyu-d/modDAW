@@ -32,6 +32,40 @@ void ModuleRegistry::initialiseDemoModules()
     emitStateChanged();
 }
 
+bool ModuleRegistry::initialiseFromState(const ModuleState& newState, juce::StringArray& errors)
+{
+    bool success = true;
+
+    {
+        const juce::ScopedLock scopedLock(lock);
+        modules.clear(true);
+        modules.add(new DemoToneModule());
+        modules.add(new PatternModule());
+        modules.add(new DroneModule());
+
+        for (const auto& entry : newState.modules)
+        {
+            if (auto* module = findModule(entry.id))
+            {
+                juce::String errorText;
+                if (! module->loadState(entry, errorText))
+                {
+                    success = false;
+                    errors.add(entry.id + ": " + errorText);
+                }
+            }
+            else
+            {
+                success = false;
+                errors.add(entry.id + ": unknown module id");
+            }
+        }
+    }
+
+    emitStateChanged();
+    return success;
+}
+
 void ModuleRegistry::reset()
 {
     const juce::ScopedLock scopedLock(lock);

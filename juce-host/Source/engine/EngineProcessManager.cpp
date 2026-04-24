@@ -2,6 +2,8 @@
 
 EngineProcessManager::EngineProcessManager()
 {
+    currentProjectFile = defaultProjectFile();
+
     transportEngine.setStateCallback([this](const TransportState& state)
     {
         applyTransportState(state);
@@ -53,19 +55,23 @@ void EngineProcessManager::start()
         initializeInternalState();
     }
 
-    transportEngine.configure(transportState.tempo, transportState.meterNumerator, transportState.meterDenominator);
-    clockDomainManager.setTransportState(transportState);
-    clockDomainManager.initialiseDemoDomains();
-    moduleRegistry.setClockDomainState(clockDomainManager.getState());
-    moduleRegistry.setTransportState(transportState);
-    moduleRegistry.initialiseDemoModules();
-    mixerEngine.initialiseState(mixerState);
-    routingGraph.initialiseState(routeState);
-    audioEngine.setTransportState(transportState);
-    audioEngine.setModuleState(moduleRegistry.getState());
-    audioEngine.setMixerState(mixerState);
-    audioEngine.setRouteState(routeState);
-    applyTransportState(transportEngine.getState());
+    if (currentProjectFile.existsAsFile())
+    {
+        ProjectSnapshot snapshot;
+        auto result = ProjectState::load(currentProjectFile, snapshot);
+        if (result.success)
+        {
+            juce::StringArray errors;
+            if (! restoreProjectState(snapshot, errors))
+                appendLog("ENGINE project restore warnings: " + errors.joinIntoString("; "));
+        }
+        else
+        {
+            appendLog("ENGINE project restore skipped: " + result.message);
+        }
+    }
+
+    bootRuntimeFromCurrentState();
 
     {
         const auto audioStatus = audioEngine.getStatus();
@@ -201,7 +207,9 @@ void EngineProcessManager::requestClockDomainRelation(const juce::String& domain
 {
     if (clockDomainManager.updateRelation(domainId, relationType, phaseOffsetBeats))
     {
+        markProjectDirty("clock relation updated");
         appendLog("ENGINE clock relation updated internally");
+        bumpRecoveryRevision();
         return;
     }
 
@@ -265,7 +273,11 @@ void EngineProcessManager::requestRenderStems()
 void EngineProcessManager::requestModuleActivateNextBar(const juce::String& moduleId)
 {
     if (moduleRegistry.scheduleActivation(moduleId, Scheduler::Policy::nextBar))
+    {
+        markProjectDirty("module activation scheduled");
         appendLog("ENGINE activation scheduled for next bar");
+        bumpRecoveryRevision();
+    }
 }
 
 void EngineProcessManager::requestModuleCodeSurfaceUpdateNextBar(const juce::String& moduleId,
@@ -273,7 +285,11 @@ void EngineProcessManager::requestModuleCodeSurfaceUpdateNextBar(const juce::Str
                                                                  const juce::String& codeSurface)
 {
     if (moduleRegistry.scheduleSurfaceUpdate(moduleId, surfaceId, codeSurface, Scheduler::Policy::nextBar))
+    {
+        markProjectDirty("behaviour surface queued");
         appendLog("ENGINE behaviour surface queued for next bar");
+        bumpRecoveryRevision();
+    }
     else
         appendLog("ENGINE behaviour surface rejected");
 }
@@ -281,31 +297,51 @@ void EngineProcessManager::requestModuleCodeSurfaceUpdateNextBar(const juce::Str
 void EngineProcessManager::requestMixerStripLevel(const juce::String& stripId, double level)
 {
     if (mixerEngine.setStripLevel(stripId, level))
+    {
+        markProjectDirty("mixer level updated");
         appendLog("ENGINE mixer level updated internally");
+        bumpRecoveryRevision();
+    }
 }
 
 void EngineProcessManager::requestMixerStripMuted(const juce::String& stripId, bool muted)
 {
     if (mixerEngine.setStripMuted(stripId, muted))
+    {
+        markProjectDirty("mixer mute updated");
         appendLog("ENGINE mixer mute updated internally");
+        bumpRecoveryRevision();
+    }
 }
 
 void EngineProcessManager::requestMixerStripGroup(const juce::String& stripId, const juce::String& groupId)
 {
     if (mixerEngine.setStripGroup(stripId, groupId))
+    {
+        markProjectDirty("mixer group updated");
         appendLog("ENGINE mixer group assignment updated internally");
+        bumpRecoveryRevision();
+    }
 }
 
 void EngineProcessManager::requestMixerSendLevel(const juce::String& sendId, double level)
 {
     if (mixerEngine.setSendLevel(sendId, level))
+    {
+        markProjectDirty("send level updated");
         appendLog("ENGINE send level updated internally");
+        bumpRecoveryRevision();
+    }
 }
 
 void EngineProcessManager::requestMixerSendMode(const juce::String& sendId, const juce::String& mode)
 {
     if (mixerEngine.setSendMode(sendId, mode))
+    {
+        markProjectDirty("send mode updated");
         appendLog("ENGINE send mode updated internally");
+        bumpRecoveryRevision();
+    }
 }
 
 void EngineProcessManager::requestRouteCreate(const juce::String& family,
@@ -315,7 +351,11 @@ void EngineProcessManager::requestRouteCreate(const juce::String& family,
 {
     juce::String errorText;
     if (routingGraph.createRoute(family, source, destination, enabled, errorText))
+    {
+        markProjectDirty("route created");
         appendLog("ENGINE route created internally");
+        bumpRecoveryRevision();
+    }
     else
         appendLog("ENGINE route rejected internally: " + errorText);
 }
@@ -323,35 +363,58 @@ void EngineProcessManager::requestRouteCreate(const juce::String& family,
 void EngineProcessManager::requestRouteDelete(const juce::String& routeId)
 {
     if (routingGraph.deleteRoute(routeId))
+    {
+        markProjectDirty("route deleted");
         appendLog("ENGINE route deleted internally");
+        bumpRecoveryRevision();
+    }
 }
 
 void EngineProcessManager::requestProjectSave()
 {
-    const juce::ScopedLock scopedLock(lock);
-    recoveryState.projectDirty = false;
-    recoveryState.lastReason = "JUCE J1 placeholder save";
-    appendLog("ENGINE project save requested (J1 stub)");
+    ProjectSnapshot snapshot;
+    {
+        const juce::ScopedLock scopedLock(lock);
+        snapshot.savedAt = juce::Time::getCurrentTime().toISO8601(true);
+        snapshot.transport = transportState;
+        snapshot.clockDomains = clockDomainState;
+        snapshot.modules = moduleState;
+        snapshot.mixer = mixerState;
+        snapshot.routes = routeState;
+        snapshot.regions = regionState;
+        snapshot.automation = automationState;
+        snapshot.structural = structuralState;
+    }
+
+    auto result = ProjectState::save(snapshot, currentProjectFile);
+
+    {
+        const juce::ScopedLock scopedLock(lock);
+        recoveryState.projectDirty = ! result.success;
+        recoveryState.recoveryPath = result.path;
+        recoveryState.lastRecoverySnapshotAt = snapshot.savedAt;
+        recoveryState.lastReason = result.success ? "saved project" : result.message;
+    }
+
+    appendLog(result.success ? "ENGINE project saved" : "ENGINE project save failed: " + result.message);
     bumpRecoveryRevision();
 }
 
 void EngineProcessManager::requestProjectLoad()
 {
+    ProjectSnapshot snapshot;
+    auto result = ProjectState::load(currentProjectFile, snapshot);
+
+    if (! result.success)
     {
-        const juce::ScopedLock scopedLock(lock);
-        initializeInternalState();
+        appendLog("ENGINE project load failed: " + result.message);
+        return;
     }
 
-    transportEngine.configure(transportState.tempo, transportState.meterNumerator, transportState.meterDenominator);
-    clockDomainManager.setTransportState(transportState);
-    clockDomainManager.initialiseDemoDomains();
-    moduleRegistry.setClockDomainState(clockDomainManager.getState());
-    moduleRegistry.setTransportState(transportState);
-    moduleRegistry.initialiseDemoModules();
-    mixerEngine.initialiseState(mixerState);
-    routingGraph.initialiseState(routeState);
-    applyTransportState(transportEngine.getState());
-    appendLog("ENGINE project load requested (J1 stub)");
+    juce::StringArray errors;
+    restoreProjectState(snapshot, errors);
+    bootRuntimeFromCurrentState();
+    appendLog(errors.isEmpty() ? "ENGINE project loaded" : "ENGINE project loaded with warnings: " + errors.joinIntoString("; "));
 }
 
 void EngineProcessManager::requestModuleFreezeToRegion(const juce::String& moduleId)
@@ -368,8 +431,10 @@ void EngineProcessManager::requestModuleFreezeToRegion(const juce::String& modul
     region.startBeat = 0.0;
     region.lengthBeats = 4.0;
     regionState.regions.add(region);
+    recoveryState.projectDirty = true;
     appendLog("ENGINE freeze region created internally");
     bumpRegionRevision();
+    bumpRecoveryRevision();
 }
 
 void EngineProcessManager::requestModuleLiveLinkedRegion(const juce::String& moduleId)
@@ -387,8 +452,10 @@ void EngineProcessManager::requestModuleLiveLinkedRegion(const juce::String& mod
     region.startBeat = 0.0;
     region.lengthBeats = 8.0;
     regionState.regions.add(region);
+    recoveryState.projectDirty = true;
     appendLog("ENGINE live-linked region created internally");
     bumpRegionRevision();
+    bumpRecoveryRevision();
 }
 
 void EngineProcessManager::requestRegionMove(const juce::String& regionId, double deltaBeats)
@@ -397,7 +464,9 @@ void EngineProcessManager::requestRegionMove(const juce::String& regionId, doubl
     for (auto& region : regionState.regions)
         if (region.regionId == regionId)
             region.startBeat = juce::jmax(0.0, region.startBeat + deltaBeats);
+    recoveryState.projectDirty = true;
     bumpRegionRevision();
+    bumpRecoveryRevision();
 }
 
 void EngineProcessManager::requestRegionTrim(const juce::String& regionId, double deltaBeats)
@@ -406,21 +475,27 @@ void EngineProcessManager::requestRegionTrim(const juce::String& regionId, doubl
     for (auto& region : regionState.regions)
         if (region.regionId == regionId)
             region.lengthBeats = juce::jmax(1.0, region.lengthBeats + deltaBeats);
+    recoveryState.projectDirty = true;
     bumpRegionRevision();
+    bumpRecoveryRevision();
 }
 
 void EngineProcessManager::requestRegionSplit(const juce::String& regionId)
 {
     const juce::ScopedLock scopedLock(lock);
     appendLog("ENGINE region split requested (J1 stub): " + regionId);
+    recoveryState.projectDirty = true;
     bumpRegionRevision();
+    bumpRecoveryRevision();
 }
 
 void EngineProcessManager::requestRegionDelete(const juce::String& regionId)
 {
     const juce::ScopedLock scopedLock(lock);
     regionState.regions.removeIf([&](const RegionEntry& region) { return region.regionId == regionId; });
+    recoveryState.projectDirty = true;
     bumpRegionRevision();
+    bumpRecoveryRevision();
 }
 
 void EngineProcessManager::requestAutomationAddPoint(const juce::String& laneId, double value)
@@ -433,8 +508,10 @@ void EngineProcessManager::requestAutomationAddPoint(const juce::String& laneId,
         point.value = value;
         lane->points.add(point);
         lane->currentValue = value;
+        recoveryState.projectDirty = true;
         appendLog("ENGINE automation point added internally");
         bumpAutomationRevision();
+        bumpRecoveryRevision();
     }
 }
 
@@ -459,8 +536,10 @@ void EngineProcessManager::requestAutomationResetDemo(const juce::String& laneId
         pointC.value = 1.0;
         lane->points.add(pointC);
         lane->currentValue = 1.0;
+        recoveryState.projectDirty = true;
         appendLog("ENGINE automation demo reset internally");
         bumpAutomationRevision();
+        bumpRecoveryRevision();
     }
 }
 
@@ -478,16 +557,20 @@ void EngineProcessManager::requestSceneTransition(const juce::String& quantizati
     transition.afterCycles = afterCycles;
     transition.state = "pending";
     structuralState.pendingTransitions.add(transition);
+    recoveryState.projectDirty = true;
     appendLog("ENGINE scene transition queued internally");
     bumpStructuralRevision();
+    bumpRecoveryRevision();
 }
 
 void EngineProcessManager::requestExternalCue(const juce::String& cueName)
 {
     const juce::ScopedLock scopedLock(lock);
     structuralState.currentScene = cueName.isNotEmpty() ? cueName : "manual";
+    recoveryState.projectDirty = true;
     appendLog("ENGINE external cue received internally");
     bumpStructuralRevision();
+    bumpRecoveryRevision();
 }
 
 void EngineProcessManager::requestPerformanceMacro(const juce::String& macroId, double value)
@@ -495,6 +578,46 @@ void EngineProcessManager::requestPerformanceMacro(const juce::String& macroId, 
     const juce::ScopedLock scopedLock(lock);
     juce::ignoreUnused(value);
     appendLog("ENGINE performance macro requested internally: " + macroId);
+}
+
+bool EngineProcessManager::restoreProjectState(const ProjectSnapshot& snapshot, juce::StringArray& errors)
+{
+    {
+        const juce::ScopedLock scopedLock(lock);
+        transportState = snapshot.transport;
+        clockDomainState = snapshot.clockDomains;
+        moduleState = snapshot.modules;
+        mixerState = snapshot.mixer;
+        routeState = snapshot.routes;
+        regionState = snapshot.regions;
+        automationState = snapshot.automation;
+        structuralState = snapshot.structural;
+        recoveryState.projectDirty = false;
+        recoveryState.recoveryPath = currentProjectFile.getFullPathName();
+        recoveryState.lastRecoverySnapshotAt = snapshot.savedAt;
+        recoveryState.lastReason = "loaded project";
+    }
+
+    auto loadedModules = moduleRegistry.initialiseFromState(snapshot.modules, errors);
+    juce::ignoreUnused(loadedModules);
+    return errors.isEmpty();
+}
+
+void EngineProcessManager::bootRuntimeFromCurrentState()
+{
+    transportEngine.setState(transportState);
+    clockDomainManager.setTransportState(transportState);
+    clockDomainManager.initialiseFromState(clockDomainState);
+    moduleRegistry.setClockDomainState(clockDomainManager.getState());
+    moduleRegistry.setTransportState(transportState);
+    mixerEngine.initialiseState(mixerState);
+    routingGraph.initialiseState(routeState);
+    audioEngine.setTransportState(transportState);
+    audioEngine.setModuleState(moduleRegistry.getState());
+    audioEngine.setMixerState(mixerState);
+    audioEngine.setRouteState(routeState);
+    applyTransportState(transportEngine.getState());
+    bumpRecoveryRevision();
 }
 
 void EngineProcessManager::initializeInternalState()
@@ -823,7 +946,8 @@ void EngineProcessManager::initializeInternalState()
     recoveryState.engineOnline = true;
     recoveryState.audioServerReady = true;
     recoveryState.projectDirty = false;
-    recoveryState.lastReason = "J1 JUCE internal engine";
+    recoveryState.recoveryPath = currentProjectFile.getFullPathName();
+    recoveryState.lastReason = "JUCE native engine";
 
     renderState = {};
     renderState.status = "idle";
@@ -851,6 +975,13 @@ void EngineProcessManager::appendLog(const juce::String& line)
     pendingLogLines.add(line);
     while (pendingLogLines.size() > 200)
         pendingLogLines.remove(0);
+}
+
+void EngineProcessManager::markProjectDirty(const juce::String& reason)
+{
+    const juce::ScopedLock scopedLock(lock);
+    recoveryState.projectDirty = true;
+    recoveryState.lastReason = reason;
 }
 
 void EngineProcessManager::applyTransportState(const TransportState& state)
@@ -911,6 +1042,11 @@ void EngineProcessManager::setConnectionState(ConnectionState newState)
 {
     const juce::ScopedLock scopedLock(lock);
     connectionState = newState;
+}
+
+juce::File EngineProcessManager::defaultProjectFile() const
+{
+    return ProjectState::defaultProjectFile();
 }
 
 void EngineProcessManager::bumpTransportRevision() { ++transportRevision; }

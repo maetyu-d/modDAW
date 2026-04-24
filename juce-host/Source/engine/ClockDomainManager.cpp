@@ -73,6 +73,22 @@ void ClockDomainManager::initialiseDemoDomains()
     startTimerHz(8);
 }
 
+void ClockDomainManager::initialiseFromState(const ClockDomainState& state)
+{
+    const auto nowSeconds = currentSeconds();
+
+    {
+        const juce::ScopedLock scopedLock(lock);
+        domains.clear();
+
+        for (const auto& entry : state.domains)
+            domains.add(ClockDomain(entry, nowSeconds));
+    }
+
+    recomputeState();
+    startTimerHz(8);
+}
+
 void ClockDomainManager::reset()
 {
     stopTimer();

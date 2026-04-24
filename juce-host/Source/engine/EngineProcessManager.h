@@ -10,6 +10,7 @@
 #include "MixerState.h"
 #include "ModuleRegistry.h"
 #include "ModuleState.h"
+#include "ProjectState.h"
 #include "RecoveryState.h"
 #include "RegionState.h"
 #include "RenderState.h"
@@ -120,12 +121,16 @@ public:
 
 private:
     void initializeInternalState();
+    bool restoreProjectState(const ProjectSnapshot& snapshot, juce::StringArray& errors);
+    void bootRuntimeFromCurrentState();
     void applyTransportState(const TransportState& state);
     void applyClockDomainState(const ClockDomainState& state);
     void applyModuleState(const ModuleState& state);
     void applyMixerState(const MixerState& state);
     void applyRouteState(const RouteState& state);
     void appendLog(const juce::String& line);
+    void markProjectDirty(const juce::String& reason);
+    juce::File defaultProjectFile() const;
     void setConnectionState(ConnectionState newState);
     void bumpTransportRevision();
     void bumpClockDomainRevision();
@@ -178,6 +183,7 @@ private:
     std::uint64_t structuralRevision = 0;
     std::uint64_t validationRevision = 0;
     juce::StringArray pendingLogLines;
+    juce::File currentProjectFile;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EngineProcessManager)
 };

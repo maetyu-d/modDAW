@@ -15,6 +15,7 @@ public:
 
     void setStateCallback(StateCallback callback);
     void initialiseDemoModules();
+    bool initialiseFromState(const ModuleState& state, juce::StringArray& errors);
     void reset();
     void setTransportState(const TransportState& transportState);
     void setClockDomainState(const ClockDomainState& state);

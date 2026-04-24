@@ -12,6 +12,7 @@ public:
     juce::String clockDomainId() const override;
     void markActivationQueued(const juce::String& boundaryLabel, int targetBarIndex) override;
     void activateNow(const juce::String& boundaryLabel) override;
+    bool loadState(const ModuleEntry& entry, juce::String& errorText) override;
     QueueResult queueSurfaceUpdate(const juce::String& surfaceId,
                                    const juce::String& codeText,
                                    const juce::String& boundaryLabel,

@@ -30,6 +30,25 @@ void TransportEngine::setStateCallback(StateCallback callback)
     stateCallback = std::move(callback);
 }
 
+void TransportEngine::setState(const TransportState& newState)
+{
+    {
+        const juce::ScopedLock scopedLock(lock);
+        const auto wasPlaying = state.isPlaying;
+        if (wasPlaying)
+            stopTimer();
+
+        state = newState;
+        playStartBeatPosition = state.beatPosition;
+        playStartSeconds = currentSeconds();
+
+        if (state.isPlaying)
+            startTimerHz(20);
+    }
+
+    emitStateChanged();
+}
+
 void TransportEngine::startPlayback()
 {
     {
